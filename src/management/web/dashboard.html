@@ -220,7 +220,7 @@
     /* Quota Section */
     .quota-container {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
       gap: 1.25rem;
     }
     .quota-card {
@@ -233,6 +233,12 @@
       gap: 0.75rem;
       position: relative;
       overflow: hidden;
+      min-height: 165px;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .quota-card:hover {
+      border-color: rgba(255, 255, 255, 0.18);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
     }
     .quota-card::before {
       content: '';
@@ -266,6 +272,7 @@
       position: relative;
       width: 84px;
       height: 84px;
+      flex-shrink: 0;
     }
     .gauge-svg {
       transform: rotate(-90deg);
@@ -282,7 +289,7 @@
       stroke: var(--primary);
       stroke-width: 7;
       stroke-linecap: round;
-      transition: stroke-dashoffset 0.6s ease;
+      transition: stroke-dashoffset 0.4s ease, stroke 0.3s ease;
     }
     .gauge-percent {
       position: absolute;
@@ -301,7 +308,7 @@
       gap: 4px;
     }
     .quota-val-large {
-      font-size: 20px;
+      font-size: 19px;
       font-weight: 700;
       color: var(--text);
     }
@@ -329,7 +336,7 @@
     }
     .profiles-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
       gap: 1.25rem;
     }
     .profile-card {
@@ -340,16 +347,22 @@
       display: flex;
       flex-direction: column;
       gap: 0.85rem;
-      transition: all 0.2s ease;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
       position: relative;
+      min-height: 240px;
     }
     .profile-card:hover {
-      border-color: rgba(255, 255, 255, 0.16);
-      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.2);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
     }
     .profile-card.active-profile {
       border-color: var(--primary);
-      box-shadow: 0 0 20px rgba(6, 182, 212, 0.12);
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.16);
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
     .profile-card-header {
       display: flex;
@@ -393,6 +406,8 @@
       background: var(--surface-elevated);
       padding: 8px 12px;
       border-radius: 8px;
+      min-height: 54px;
+      justify-content: center;
     }
     .mini-meter-row {
       display: flex;
@@ -621,7 +636,17 @@
 
     <!-- Quota & Headroom Overview -->
     <section>
-      <div class="quota-container" id="quota-cards-container">
+      <div class="section-header">
+        <div class="section-title">
+          <span>⚡</span>
+          <span>Quota & Telemetry Dials</span>
+          <span id="active-profile-indicator" class="badge-version" style="display: none;"></span>
+        </div>
+        <button class="btn btn-sm btn-primary" id="btn-refresh-quotas" onclick="refreshQuotasNow()">
+          <span id="refresh-spinner" style="display: inline-block;">🔄</span> Refresh Quotas
+        </button>
+      </div>
+      <div class="quota-container" id="quota-cards-container" style="margin-top: 1rem;">
         <!-- Injected via JS -->
       </div>
     </section>
@@ -900,13 +925,60 @@
       document.getElementById(id).classList.add('open');
     }
 
+    function calculateHeadroom(r) {
+      if (!r) return { remaining: 100, used: 0, isRateLimit: false };
+      const isRateLimit = r.metric === 'rate-limit-used';
+      const raw = typeof r.value === 'number' && Number.isFinite(r.value) ? r.value : 0;
+      const remaining = isRateLimit ? Math.max(0, 100 - raw) : Math.max(0, Math.min(100, raw));
+      const used = isRateLimit ? Math.max(0, Math.min(100, raw)) : Math.max(0, 100 - raw);
+      return { remaining, used, isRateLimit };
+    }
+
+    function formatBucketLabel(bucket) {
+      if (!bucket) return 'Quota Window';
+      if (bucket === '3p-weekly') return 'Claude / GPT-4o (Weekly)';
+      if (bucket === '3p-5h') return 'Claude / GPT-4o (5h Window)';
+      if (bucket === 'gemini-weekly') return 'Gemini Pro / Flash (Weekly)';
+      if (bucket === 'gemini-5h') return 'Gemini Pro / Flash (5h Window)';
+      if (bucket.includes('primary') && bucket.includes('300m')) return 'Codex Primary (5h Limit)';
+      if (bucket.includes('secondary') && bucket.includes('10080m')) return 'Codex Weekly Limit (7d)';
+      if (bucket.includes('primary') && bucket.includes('43200m')) return 'Codex Monthly Limit (30d)';
+      if (bucket.includes('primary')) return 'Codex Primary Limit';
+      if (bucket.includes('secondary')) return 'Codex Secondary Limit';
+      if (bucket === 'five_hour') return 'Claude 5-Hour Limit';
+      if (bucket === 'seven_day') return 'Claude Weekly Limit';
+      return bucket;
+    }
+
+    async function refreshQuotasNow() {
+      const btn = document.getElementById('btn-refresh-quotas');
+      const spinner = document.getElementById('refresh-spinner');
+      if (btn) btn.disabled = true;
+      if (spinner) spinner.style.animation = 'spin 0.8s linear infinite';
+      try {
+        await rpc('resources.refresh');
+        await refreshAll();
+        showToast('Quota telemetry refreshed from provider!');
+      } catch (err) {
+        showToast('Quota refresh failed: ' + (err?.message || err), 'error');
+      } finally {
+        if (spinner) spinner.style.animation = '';
+        if (btn) btn.disabled = false;
+      }
+    }
+
     function switchToolTab(tool) {
+      if (currentTool === tool) return;
       currentTool = tool;
       document.querySelectorAll('.tab-btn').forEach(b => {
         b.classList.toggle('active', b.getAttribute('data-tool') === tool);
       });
       document.getElementById('profiles-section-title').textContent =
         (tool === 'antigravity' ? 'Antigravity' : tool === 'codex' ? 'OpenAI Codex' : tool === 'claude' ? 'Claude Code' : 'Copilot') + ' Accounts';
+      
+      // Clear containers once on tab switch to mount new tool's cards
+      document.getElementById('quota-cards-container').innerHTML = '';
+      document.getElementById('profiles-grid').innerHTML = '';
       renderUI();
     }
 
@@ -919,84 +991,162 @@
 
     function renderQuotas() {
       const container = document.getElementById('quota-cards-container');
-      container.innerHTML = '';
+      const activeId = globalSnapshot.activeProfiles?.[currentTool];
+      const activeProfile = (globalSnapshot.profiles || []).find(p => p.id === activeId);
 
-      const relevantResources = globalResources.filter(r => {
-        const prof = globalSnapshot.profiles.find(p => p.id === r.profileId);
-        return prof && prof.tool === currentTool;
-      });
+      const activeBadge = document.getElementById('active-profile-indicator');
+      if (activeBadge) {
+        if (activeProfile) {
+          activeBadge.textContent = `Active: ${activeProfile.label} (${activeProfile.reportedAccount || 'unverified'})`;
+          activeBadge.style.display = 'inline-flex';
+        } else {
+          activeBadge.style.display = 'none';
+        }
+      }
 
-      if (!relevantResources.length) {
+      // Prioritize active profile's resources; fall back to all resources for current tool if active has none yet
+      let toolResources = globalResources.filter(r => r.profileId === activeId);
+      if (!toolResources.length) {
+        toolResources = globalResources.filter(r => {
+          const prof = globalSnapshot.profiles.find(p => p.id === r.profileId);
+          return prof && prof.tool === currentTool;
+        });
+      }
+
+      if (!toolResources.length) {
         container.innerHTML = `
-          <div class="quota-card" style="grid-column: 1 / -1; text-align: center; color: var(--text-muted);">
-            No quota observations recorded yet for ${currentTool}. Quota is probed automatically when launching agents.
+          <div class="quota-card" style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); justify-content: center; min-height: 120px;">
+            <p>No quota observations recorded yet for ${currentTool}.</p>
+            <p style="font-size: 12px; color: var(--text-dim); margin-top: 4px;">
+              Click <strong>Refresh Quotas</strong> above or launch an agent to probe current telemetry.
+            </p>
           </div>`;
         return;
       }
 
-      // Group by bucket
+      // If placeholder was present, clear it
+      if (container.querySelector('[style*="grid-column: 1 / -1"]')) {
+        container.innerHTML = '';
+      }
+
+      // Group by canonical bucket, taking latest observation
       const buckets = {};
-      for (const r of relevantResources) {
+      for (const r of toolResources) {
         if (!buckets[r.bucket] || new Date(r.observedAt) > new Date(buckets[r.bucket].observedAt)) {
           buckets[r.bucket] = r;
         }
       }
 
-      for (const [bucket, r] of Object.entries(buckets)) {
-        const val = Math.max(0, Math.min(100, r.value ?? 100));
-        const strokeDash = 2 * Math.PI * 36;
-        const offset = strokeDash - (val / 100) * strokeDash;
-        
+      // Deterministic fixed sort order so quota cards never swap positions:
+      const sortedBuckets = Object.entries(buckets).sort(([bA], [bB]) => {
+        const score = (b) => {
+          if (b.includes('5h') || b.includes('300m') || b === 'five_hour') return 1;
+          if (b.includes('weekly') || b.includes('10080m') || b === 'seven_day') return 2;
+          if (b.includes('primary')) return 3;
+          if (b.includes('secondary')) return 4;
+          return 5;
+        };
+        const diff = score(bA) - score(bB);
+        return diff !== 0 ? diff : bA.localeCompare(bB);
+      });
+
+      const currentBucketKeys = new Set();
+      const strokeDash = 2 * Math.PI * 36;
+
+      for (const [bucket, r] of sortedBuckets) {
+        const bucketKey = 'quota-card-' + bucket.replace(/[^a-zA-Z0-9_-]/g, '_');
+        currentBucketKeys.add(bucketKey);
+
+        const { remaining, used, isRateLimit } = calculateHeadroom(r);
+        const offset = strokeDash - (remaining / 100) * strokeDash;
+
         let resetStr = '';
         if (r.resetsAt) {
           const diff = new Date(r.resetsAt) - new Date();
           if (diff > 0) {
-            const days = Math.floor(diff / (86400000));
+            const days = Math.floor(diff / 86400000);
             const hours = Math.floor((diff % 86400000) / 3600000);
-            resetStr = `⏱️ Resets in ${days > 0 ? days + 'd ' : ''}${hours}h`;
+            const mins = Math.floor((diff % 3600000) / 60000);
+            resetStr = `⏱️ Resets in ${days > 0 ? days + 'd ' : ''}${hours}h ${mins}m`;
+          } else {
+            resetStr = '⏱️ Reset window elapsed';
           }
         }
 
-        const bucketLabel = bucket === '3p-weekly' ? 'Claude / GPT-4o (Weekly)'
-          : bucket === 'gemini-weekly' ? 'Gemini Pro / Flash (Weekly)'
-          : bucket === 'gemini-5h' ? 'Gemini 5-Hour Window'
-          : bucket === 'codex-5h' ? 'Codex 5-Hour Limit'
-          : bucket;
+        const bucketLabel = formatBucketLabel(bucket);
+        const gaugeColor = remaining < 20 ? 'var(--danger)' : remaining < 50 ? 'var(--warning)' : 'var(--primary)';
 
-        const card = document.createElement('div');
-        card.className = 'quota-card';
-        card.innerHTML = `
-          <div class="quota-header">
-            <span class="quota-title">${bucketLabel}</span>
-            <span style="font-size: 11px; color: var(--text-dim);">${r.account || ''}</span>
-          </div>
-          <div class="quota-gauge-box">
-            <div class="gauge-circle">
-              <svg class="gauge-svg" viewBox="0 0 84 84">
-                <circle class="gauge-bg" cx="42" cy="42" r="36" />
-                <circle class="gauge-fill" cx="42" cy="42" r="36"
-                  stroke-dasharray="${strokeDash}"
-                  stroke-dashoffset="${offset}" />
-              </svg>
-              <div class="gauge-percent">${val.toFixed(1)}%</div>
+        let card = document.getElementById(bucketKey);
+        if (!card) {
+          card = document.createElement('div');
+          card.id = bucketKey;
+          card.className = 'quota-card';
+          card.innerHTML = `
+            <div class="quota-header">
+              <span class="quota-title" data-field="title"></span>
+              <span style="font-size: 11px; color: var(--text-dim);" data-field="account"></span>
             </div>
-            <div class="quota-meta">
-              <div class="quota-val-large">${val.toFixed(2)}% remaining</div>
-              ${resetStr ? `<div class="quota-countdown">${resetStr}</div>` : ''}
-              <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Source: ${r.source || 'native observer'}</div>
+            <div class="quota-gauge-box">
+              <div class="gauge-circle">
+                <svg class="gauge-svg" viewBox="0 0 84 84">
+                  <circle class="gauge-bg" cx="42" cy="42" r="36" />
+                  <circle class="gauge-fill" cx="42" cy="42" r="36"
+                    stroke-dasharray="${strokeDash}"
+                    stroke-dashoffset="${offset}" />
+                </svg>
+                <div class="gauge-percent" data-field="percent"></div>
+              </div>
+              <div class="quota-meta">
+                <div class="quota-val-large" data-field="val-large"></div>
+                <div class="quota-countdown" data-field="countdown" style="display: none;"></div>
+                <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;" data-field="source"></div>
+              </div>
             </div>
-          </div>
+          `;
+          container.appendChild(card);
+        }
+
+        // In-place update without reflow or recreation
+        card.querySelector('[data-field="title"]').textContent = bucketLabel;
+        card.querySelector('[data-field="account"]').textContent = r.account || activeProfile?.label || '';
+
+        const fillEl = card.querySelector('.gauge-fill');
+        fillEl.style.strokeDashoffset = offset;
+        fillEl.style.stroke = gaugeColor;
+
+        card.querySelector('[data-field="percent"]').textContent = `${remaining.toFixed(1)}%`;
+        card.querySelector('[data-field="val-large"]').innerHTML = `
+          <span style="color: ${gaugeColor};">${remaining.toFixed(1)}% remaining</span>
+          ${isRateLimit ? `<span style="font-size: 12px; font-weight: normal; color: var(--text-muted); margin-left: 6px;">(${used.toFixed(1)}% used)</span>` : ''}
         `;
-        container.appendChild(card);
+
+        const countdownEl = card.querySelector('[data-field="countdown"]');
+        if (resetStr) {
+          countdownEl.textContent = resetStr;
+          countdownEl.style.display = 'block';
+        } else {
+          countdownEl.style.display = 'none';
+        }
+
+        card.querySelector('[data-field="source"]').textContent = `Source: ${r.source || 'native observer'}`;
+      }
+
+      // Remove any stale bucket cards
+      for (const child of Array.from(container.children)) {
+        if (child.id && child.id.startsWith('quota-card-') && !currentBucketKeys.has(child.id)) {
+          child.remove();
+        }
       }
     }
 
     function renderProfiles() {
       const grid = document.getElementById('profiles-grid');
-      grid.innerHTML = '';
-
-      const profiles = (globalSnapshot.profiles || []).filter(p => p.tool === currentTool);
       const activeId = globalSnapshot.activeProfiles?.[currentTool];
+
+      // Deterministic fixed sort by label so cards NEVER jump or change positions
+      const profiles = (globalSnapshot.profiles || [])
+        .filter(p => p.tool === currentTool)
+        .sort((a, b) => a.label.localeCompare(b.label) || a.id.localeCompare(b.id));
 
       if (!profiles.length) {
         grid.innerHTML = `
@@ -1007,33 +1157,118 @@
         return;
       }
 
+      // If placeholder was present, clear it
+      if (grid.querySelector('[style*="grid-column: 1 / -1"]')) {
+        grid.innerHTML = '';
+      }
+
+      const currentProfileCardIds = new Set();
+
       for (const p of profiles) {
+        const cardId = 'profile-card-' + p.id;
+        currentProfileCardIds.add(cardId);
         const isActive = p.id === activeId;
-        const card = document.createElement('div');
-        card.className = 'profile-card' + (isActive ? ' active-profile' : '');
 
-        card.innerHTML = `
-          <div class="profile-card-header">
-            <div class="profile-label-box">
-              <div class="profile-label">
-                ${p.label}
-                ${isActive ? '<span class="badge-active">ACTIVE</span>' : ''}
+        // Get telemetry observations for this specific profile
+        const pResources = globalResources.filter(r => r.profileId === p.id);
+        const pBuckets = {};
+        for (const r of pResources) {
+          if (!pBuckets[r.bucket] || new Date(r.observedAt) > new Date(pBuckets[r.bucket].observedAt)) {
+            pBuckets[r.bucket] = r;
+          }
+        }
+
+        let metersHtml = '';
+        const bucketEntries = Object.entries(pBuckets).sort(([bA], [bB]) => {
+          const score = (b) => {
+            if (b.includes('5h') || b.includes('300m') || b === 'five_hour') return 1;
+            if (b.includes('weekly') || b.includes('10080m') || b === 'seven_day') return 2;
+            return 3;
+          };
+          return score(bA) - score(bB);
+        });
+
+        if (bucketEntries.length) {
+          for (const [b, r] of bucketEntries) {
+            const { remaining } = calculateHeadroom(r);
+            const color = remaining < 20 ? 'var(--danger)' : remaining < 50 ? 'var(--warning)' : 'var(--primary)';
+            metersHtml += `
+              <div style="margin-bottom: 4px;">
+                <div class="mini-meter-row">
+                  <span style="font-size: 11px; color: var(--text-muted);">${formatBucketLabel(b)}</span>
+                  <span style="font-size: 11px; font-weight: 600; color: ${color};">${remaining.toFixed(1)}%</span>
+                </div>
+                <div class="mini-bar-track">
+                  <div class="mini-bar-fill" style="width: ${remaining}%; background: ${color};"></div>
+                </div>
               </div>
-              <div class="profile-email">${p.reportedAccount || 'Identity unverified'}</div>
-            </div>
-            <div style="font-size: 11px; color: ${p.auth === 'authenticated' ? 'var(--success)' : 'var(--warning)'}; font-weight: 600;">
-              ● ${p.auth}
-            </div>
-          </div>
+            `;
+          }
+        } else {
+          metersHtml = `<div style="font-size: 11px; color: var(--text-dim); padding: 2px 0;">No quota telemetry recorded yet</div>`;
+        }
 
-          <div class="profile-actions-bar">
-            ${!isActive ? `<button class="btn btn-sm btn-primary" onclick="swapProfile('${p.id}')">⚡ Hot Swap</button>` : ''}
-            <button class="btn btn-sm" onclick="openShareHandoffModal('${p.id}', '${p.label}')">🤝 Handoff</button>
-            <button class="btn btn-sm" onclick="openRenameModal('${p.id}', '${p.label}')">✏️ Rename</button>
-            <button class="btn btn-sm btn-danger" onclick="openRemoveModal('${p.id}', '${p.label}')">🗑️ Remove</button>
-          </div>
-        `;
-        grid.appendChild(card);
+        let card = document.getElementById(cardId);
+        if (!card) {
+          card = document.createElement('div');
+          card.id = cardId;
+          card.className = 'profile-card' + (isActive ? ' active-profile' : '');
+          card.innerHTML = `
+            <div class="profile-card-header">
+              <div class="profile-label-box">
+                <div class="profile-label">
+                  <span class="profile-title-text"></span>
+                  <span class="active-badge-slot"></span>
+                </div>
+                <div class="profile-email"></div>
+              </div>
+              <div class="profile-auth-status" style="font-size: 11px; font-weight: 600;"></div>
+            </div>
+
+            <div class="profile-meters"></div>
+
+            <div class="profile-actions-bar">
+              <span class="hotswap-btn-slot"></span>
+              <button class="btn btn-sm btn-handoff">🤝 Handoff</button>
+              <button class="btn btn-sm btn-rename">✏️ Rename</button>
+              <button class="btn btn-sm btn-danger btn-remove">🗑️ Remove</button>
+            </div>
+          `;
+          grid.appendChild(card);
+        }
+
+        // In-place updates without removing or recreating the card DOM node!
+        card.className = 'profile-card' + (isActive ? ' active-profile' : '');
+        card.querySelector('.profile-title-text').textContent = p.label;
+
+        const badgeSlot = card.querySelector('.active-badge-slot');
+        badgeSlot.innerHTML = isActive ? '<span class="badge-active">ACTIVE</span>' : '';
+
+        card.querySelector('.profile-email').textContent = p.reportedAccount || 'Identity unverified';
+
+        const authEl = card.querySelector('.profile-auth-status');
+        authEl.style.color = p.auth === 'authenticated' ? 'var(--success)' : 'var(--warning)';
+        authEl.textContent = `● ${p.auth}`;
+
+        card.querySelector('.profile-meters').innerHTML = metersHtml;
+
+        const hotswapSlot = card.querySelector('.hotswap-btn-slot');
+        if (!isActive) {
+          hotswapSlot.innerHTML = `<button class="btn btn-sm btn-primary" onclick="swapProfile('${p.id}')">⚡ Hot Swap</button>`;
+        } else {
+          hotswapSlot.innerHTML = '';
+        }
+
+        card.querySelector('.btn-handoff').onclick = () => openShareHandoffModal(p.id, p.label);
+        card.querySelector('.btn-rename').onclick = () => openRenameModal(p.id, p.label);
+        card.querySelector('.btn-remove').onclick = () => openRemoveModal(p.id, p.label);
+      }
+
+      // Remove any cards that were deleted
+      for (const child of Array.from(grid.children)) {
+        if (child.id && child.id.startsWith('profile-card-') && !currentProfileCardIds.has(child.id)) {
+          child.remove();
+        }
       }
     }
 
