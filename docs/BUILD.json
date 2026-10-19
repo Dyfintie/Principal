@@ -1,0 +1,104 @@
+{
+  "recordedAt": "2026-10-07T09:23:59.296022+00:00",
+  "version": "0.1.0",
+  "node": "v26.10.0",
+  "typescriptBuild": "passed",
+  "runtimeSyntax": "passed",
+  "dockerImage": "principal-runtime:local",
+  "imageId": "sha256:ff6a0449d7806d23afa3ac3150c186bb64470d2e35b02932d6d9d0a870884f87",
+  "providerVersions": {
+    "codex": "0.160.1",
+    "antigravity": "1.3.1"
+  },
+  "providerVersionCommandsInImage": "passed",
+  "liveAccountChecks": {
+    "runId": "6a1ab610-9168-4194-ab4e-3bb24b0b2f70",
+    "status": "applied",
+    "provider": "codex",
+    "accounts": 2,
+    "parallelReads": "passed",
+    "exactFileMarkers": "passed",
+    "readOnlyEnforcement": "passed",
+    "writeTask": "passed",
+    "integrationValidation": "passed",
+    "apply": "passed",
+    "remainingUnverified": [
+      "token refresh",
+      "exhausted quota handoff",
+      "crash recovery",
+      "rootless Docker"
+    ],
+    "imageId": "sha256:09e39c8b83b8b62d572c9e5c1ae983f5c66b36ac8eb748dec10427cd5ee3fbe8"
+  },
+  "automatedTests": {
+    "passed": 56,
+    "failed": 0,
+    "command": "npm test"
+  },
+  "committed": false,
+  "pushed": false,
+  "published": false,
+  "runtimeIsolationChecks": "passed: helper packaging, read-only root/workspace, writable tmpfs, default seccomp, zero effective capabilities",
+  "dashboardChecks": {
+    "terminalNavigation": "passed",
+    "concurrentAgentRendering": "passed (fixtures)",
+    "savedRunActivityReplay": "passed",
+    "smallTerminalPagination": "passed",
+    "longResultScrolling": "passed",
+    "detach": "passed",
+    "command": "python3 scripts/dashboard-smoke.py 6e761db6-699a-45d6-9b87-76926832c6e5"
+  },
+  "quotaDisplayChecks": "passed: shared two-decimal formatter, unknown values, fractional Codex and Antigravity input retained",
+  "loginInfrastructureChecks": {
+    "interactiveSshPty": "passed",
+    "keyringWriteRead": "passed",
+    "coldKeyringRestore": "passed (synthetic fixture)",
+    "nativeAntigravitySignIn": "separately verified with user browser login",
+    "inferenceConsumed": false,
+    "command": "npm run test:login",
+    "sshProxyRestoration": "passed: raw SSH environment omitted proxy; launcher restores container policy",
+    "googleHttpsConnectivity": "passed: unauthenticated HEAD returned HTTP 404 after successful TLS",
+    "snapshotExclusions": "passed: synthetic logs excluded, provider cache retained"
+  },
+  "auditVerification": {
+    "report": "docs/AUDIT_REVIEW.md",
+    "unitTests": 43,
+    "node22RecordedRuntime": "passed: unit suite and login smoke",
+    "historicalMalformedEvents": 0,
+    "codexEndToEnd": "passed: parallel readers, writer, validation and apply in temporary repository",
+    "antigravityWorker": {
+      "status": "passed",
+      "imageId": "sha256:637b85b2dabcf6a68a3f56c9a0cb85e8803b8200b66d02ebd31ab63ef794cf1f",
+      "model": "gemini-3.8-flash-medium",
+      "nativeCredentialRestore": "passed",
+      "randomMarkerReadWrite": "passed",
+      "structuredResult": "passed",
+      "permissionBypass": false,
+      "testTimeoutSeconds": 240,
+      "earlierShortRepeat": "90-second deadline reached; failed safely; timeout diagnostics improved"
+    },
+    "coordinatorRestarted": true,
+    "committed": false,
+    "pushed": false
+  },
+  "secondAuditVerification": {
+    "report": "docs/SECOND_AUDIT_REVIEW.md",
+    "unitTests": 56,
+    "typescriptBuild": "passed",
+    "runtimeSyntax": "passed",
+    "node22RecordedRuntime": "passed",
+    "daemonLifetimeLockAndSocketMode": "passed: synthetic isolated state",
+    "plannerDeadline": "passed: simulated stalled runtime",
+    "generationCommitFailureAndReplay": "passed: synthetic snapshot and database failure",
+    "dockerPeerSshIsolation": "passed: peer blocked, host SSH works",
+    "googleHttpsConnectivity": "passed: unauthenticated HEAD returned HTTP 404",
+    "syntheticKeyringRestore": "passed",
+    "currentImageId": "sha256:ff6a0449d7806d23afa3ac3150c186bb64470d2e35b02932d6d9d0a870884f87",
+    "realCredentialsAccessed": false,
+    "inferenceConsumed": false,
+    "historicalLiveEvidence": "Existing liveAccountChecks and auditVerification refer to earlier images and were not rerun",
+    "coordinatorAlreadyRunning": false,
+    "committed": false,
+    "pushed": false
+  }
+}

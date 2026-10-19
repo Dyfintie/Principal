@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "pool": "development",
+  "tasks": [
+    {
+      "id": "implementation",
+      "instruction": "Implement the requested authentication feature. Inspect existing conventions first. Describe any missing requirements in remainingIssues.",
+      "mode": "write",
+      "dependsOn": [],
+      "writePaths": ["src/**"],
+      "expectedOutputs": ["patch", "summary"],
+      "allowFallback": true
+    },
+    {
+      "id": "tests",
+      "instruction": "Add tests for the implemented authentication behavior using the repository's existing test framework.",
+      "mode": "write",
+      "dependsOn": ["implementation"],
+      "writePaths": ["tests/**"],
+      "expectedOutputs": ["patch", "validation"],
+      "allowFallback": true
+    }
+  ]
+}

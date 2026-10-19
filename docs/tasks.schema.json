@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "pool": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$"
+    },
+    "goal": {
+      "type": "string"
+    },
+    "tasks": {
+      "minItems": 1,
+      "maxItems": 20,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$"
+          },
+          "instruction": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100000
+          },
+          "mode": {
+            "default": "write",
+            "type": "string",
+            "enum": [
+              "read",
+              "write"
+            ]
+          },
+          "dependsOn": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$"
+            }
+          },
+          "writePaths": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "expectedOutputs": {
+            "default": [
+              "summary"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "patch",
+                "summary",
+                "validation"
+              ]
+            }
+          },
+          "account": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$"
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "codex",
+              "antigravity"
+            ]
+          },
+          "model": {
+            "type": "string"
+          },
+          "allowFallback": {
+            "default": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "instruction",
+          "mode",
+          "dependsOn",
+          "writePaths",
+          "expectedOutputs",
+          "allowFallback"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "pool",
+    "tasks"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,218 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "default": 1,
+      "type": "number",
+      "const": 1
+    },
+    "pool": {
+      "default": "development",
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$"
+    },
+    "runtime": {
+      "default": {
+        "image": "principal-runtime:local",
+        "cpus": 2,
+        "memoryMiB": 2048,
+        "pids": 512
+      },
+      "type": "object",
+      "properties": {
+        "image": {
+          "default": "principal-runtime:local",
+          "type": "string"
+        },
+        "cpus": {
+          "default": 2,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "memoryMiB": {
+          "default": 2048,
+          "type": "integer",
+          "minimum": 512,
+          "maximum": 9007199254740991
+        },
+        "pids": {
+          "default": 512,
+          "type": "integer",
+          "minimum": 32,
+          "maximum": 9007199254740991
+        },
+        "proxy": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "image",
+        "cpus",
+        "memoryMiB",
+        "pids"
+      ],
+      "additionalProperties": false
+    },
+    "routing": {
+      "default": {
+        "workers": 4,
+        "reservePercent": 10,
+        "allowUnknownQuota": false,
+        "quotaMaxAgeSeconds": 300,
+        "maxHandoffs": 5,
+        "transientRetries": 2
+      },
+      "type": "object",
+      "properties": {
+        "workers": {
+          "default": 4,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        },
+        "reservePercent": {
+          "default": 10,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 99
+        },
+        "allowUnknownQuota": {
+          "default": false,
+          "type": "boolean"
+        },
+        "quotaMaxAgeSeconds": {
+          "default": 300,
+          "type": "number",
+          "minimum": 30
+        },
+        "maxHandoffs": {
+          "default": 5,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20
+        },
+        "transientRetries": {
+          "default": 2,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        }
+      },
+      "required": [
+        "workers",
+        "reservePercent",
+        "allowUnknownQuota",
+        "quotaMaxAgeSeconds",
+        "maxHandoffs",
+        "transientRetries"
+      ],
+      "additionalProperties": false
+    },
+    "attemptTimeoutSeconds": {
+      "default": 1800,
+      "type": "integer",
+      "minimum": 30,
+      "maximum": 86400
+    },
+    "setup": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "minItems": 1,
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "validation": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "minItems": 1,
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "permissions": {
+      "default": {
+        "allow": [
+          "command(*)"
+        ],
+        "deny": [
+          "mcp(*)",
+          "execute_url(*)"
+        ]
+      },
+      "type": "object",
+      "properties": {
+        "allow": {
+          "default": [
+            "command(*)"
+          ],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deny": {
+          "default": [
+            "mcp(*)",
+            "execute_url(*)"
+          ],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "allow",
+        "deny"
+      ],
+      "additionalProperties": false
+    },
+    "supervisor": {
+      "default": {
+        "maxTasks": 20,
+        "revisionRounds": 2
+      },
+      "type": "object",
+      "properties": {
+        "maxTasks": {
+          "default": 20,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "revisionRounds": {
+          "default": 2,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        }
+      },
+      "required": [
+        "maxTasks",
+        "revisionRounds"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "pool",
+    "runtime",
+    "routing",
+    "attemptTimeoutSeconds",
+    "setup",
+    "validation",
+    "permissions",
+    "supervisor"
+  ],
+  "additionalProperties": false
+}

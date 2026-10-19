@@ -1,0 +1,195 @@
+{
+  "recordedAt": "2026-10-07T13:52:16.655941+00:00",
+  "scope": "Local implementation; full release gates remain open",
+  "automated": {
+    "command": "npm test",
+    "passed": 80,
+    "failed": 0,
+    "typescript": "passed",
+    "runtimeSyntax": "passed"
+  },
+  "runtime": {
+    "image": "principal-runtime:local",
+    "imageId": "sha256:16fe2df8f99f33a0c7b77e99b4776b3915cd27f457cbf99a26a71243bf095dcb",
+    "versions": {
+      "codex": "0.160.1",
+      "antigravity": "1.3.1"
+    },
+    "isolationSmoke": "passed: readonly root/workspace, tmpfs, default seccomp, zero capabilities"
+  },
+  "conversations": {
+    "codex": {
+      "sessionId": "bbfd2fee-1982-496b-9af8-543e78324d5d",
+      "nativeId": "01a11647-53fe-7ea2-897e-82ad5024323e",
+      "completedTurns": 3,
+      "duplicateAdmission": "passed",
+      "repeatedTurns": "passed",
+      "coldResume": "passed",
+      "nativeCompaction": "passed"
+    },
+    "antigravity": {
+      "lead": "antigravity-1",
+      "id": "80443d5f-a96b-4907-ad82-46c3595d921e",
+      "nativeId": "f00c227e-25cf-4421-83ee-73d7694965cd",
+      "continuedNativeId": "bd23ffa3-e5ca-425c-943d-ac67aac8207a",
+      "turns": 4,
+      "checkpoint": "c9ee65b4-b1e8-49ee-bbf2-ece55ae563aa",
+      "duplicateAdmission": "passed",
+      "repeatedTurns": "passed",
+      "coldResume": "passed; third turn retained original native ID",
+      "portableContinuation": "passed; fourth turn uses a fresh native ID and recalls marker"
+    }
+  },
+  "mixedWorkflow": {
+    "sessionId": "64054aff-caec-4688-9308-69413a4c8de8",
+    "runId": "d5e8a75b-f291-4c83-8cac-654f3a95c64e",
+    "attempts": [
+      {
+        "id": "033c028f-42ea-4d5c-a783-d5b2f579d2a0",
+        "accountId": "b552a366-1126-4d2a-8d26-059f8352e4d1",
+        "startedAt": "2026-10-07T12:12:37.871Z"
+      },
+      {
+        "id": "c217497b-d376-4751-8e72-9856d72bcf09",
+        "accountId": "8e2e22d7-4f03-445b-9bb1-0df0be5b582f",
+        "startedAt": "2026-10-07T12:12:41.202Z"
+      }
+    ],
+    "terminals": [
+      {
+        "seq": 6060,
+        "runId": "d5e8a75b-f291-4c83-8cac-654f3a95c64e",
+        "taskId": "write-right",
+        "attemptId": "c217497b-d376-4751-8e72-9856d72bcf09",
+        "type": "attempt_finished",
+        "at": "2026-10-07T12:13:10.787Z",
+        "data": {
+          "status": "completed",
+          "files": [
+            "right.txt"
+          ],
+          "error": null
+        }
+      },
+      {
+        "seq": 6138,
+        "runId": "d5e8a75b-f291-4c83-8cac-654f3a95c64e",
+        "taskId": "write-left",
+        "attemptId": "033c028f-42ea-4d5c-a783-d5b2f579d2a0",
+        "type": "attempt_finished",
+        "at": "2026-10-07T12:13:14.138Z",
+        "data": {
+          "status": "completed",
+          "files": [
+            "left.txt"
+          ],
+          "error": null
+        }
+      }
+    ],
+    "reviewHash": "f99ff12c17f450b3a0177d5b02667f378844debcc3a023a340f1b8fa543042bf",
+    "headPreserved": true,
+    "indexPreserved": true,
+    "workersOverlap": true,
+    "configuredIndependentValidation": "passed",
+    "stagedAndUnstagedUserContentPreserved": true,
+    "nonignoredUntrackedPreserved": true
+  },
+  "terminal": {
+    "command": "python3 scripts/chat-smoke.py bbfd2fee-1982-496b-9af8-543e78324d5d",
+    "passed": [
+      "12x55 terminal",
+      "context/history",
+      "view switching",
+      "scrolling",
+      "multiline bracketed paste",
+      "detach"
+    ]
+  },
+  "jsonExec": {
+    "sessionId": "29f98d9f-2b0e-4c3b-87dd-3aa089519e9e",
+    "schemaVersion": 2,
+    "completed": "passed; assistant replied OK"
+  },
+  "deniedHeadlessPermission": {
+    "sessionId": "b27d60e0-a01e-469f-8273-d8f1d30fcb18",
+    "result": "Antigravity read outside scoped /workspace denied; failed turn preserved as evidence"
+  },
+  "remainingLiveGates": [
+    "exhausted-quota same-provider handoff",
+    "native credential refresh",
+    "native interactive-question denial",
+    "broader daemon-crash/container-disappearance/failed-stop injection",
+    "concurrent isolation across two Antigravity accounts (one enrolled)",
+    "rootless Docker and other host identities"
+  ],
+  "sourceHashes": {
+    "runtime/antigravity-identity.mjs": "e676de4274752bb9e5e6e4abdd93678d4d4c81481a1e0c4a82abd80e53759b27",
+    "runtime/antigravity-permissions.mjs": "b00d6a2955c5cc75dafab508c51f92baf2e0f074baf54a0ce388b8b44001f4fb",
+    "runtime/client.mjs": "600952869a925f8bdb17a70da531ba34c8383ddc9a88d21429528b230ee50ead",
+    "runtime/conversation.mjs": "16deb7aa4ffc729f59c9e76d691158b8c0a4824fcae5d3982bab6aacb113066f",
+    "runtime/login-command.mjs": "793cec93cba15ce5d4f5092bc1fbad1cab5fe0d03912fc7eafa5e26e781ccc09",
+    "runtime/login-environment.mjs": "47174b71bdabc52d887d21ebe600d7774ec0890338b689c2ec1c990b18c222e3",
+    "runtime/mcp.mjs": "55e10034380f631c2467acc61777c18d3ea63e27b87f9484ffc292c20150bcde",
+    "runtime/provider-versions.mjs": "de24f375eb3a045a8b459b622115ab4394908e737dcd9c6a447876c9158c3487",
+    "runtime/redaction.mjs": "a80980fa476d59b05ba3640d7bfb7900ea0a4898e54b5070821ba60c553671e7",
+    "runtime/rpc.mjs": "8522eff99c67e10c932823c521f3b74d91f718e149c5ffd6446301cc10a5aeb7",
+    "runtime/worker.mjs": "e767d32065df7856a01a07469bca3a324a24190765718e4683058ee78ca30026",
+    "src/agent-view.ts": "45ad5f2883e2dd25626a0c8ff2883b9b1f2d3b590c81bc6aa6bda8e55daf8ff8",
+    "src/chat.tsx": "2ac13306046e5e32b4c5df3cf5a98a837c5d17c55a58618a659b8dc7de3e3086",
+    "src/cli.ts": "c1a539d261e429cefa7c86d31c4d810b3ffc07441d790e66e22e22123d9fad50",
+    "src/client.ts": "8474640107d24b315047011d6d795e3a2ab64a6d7ec9fbfa5f0748be8d64aacc",
+    "src/coordinator.ts": "6d8c15cca09f8b5daf70230867513119f7f4c19b64d2c0900f7eb0d13740bf46",
+    "src/daemon.ts": "a0b5e7fc46930cd1acb1384b50b81cd52c51a5e04172c08e5abf1ce94316694b",
+    "src/dashboard.tsx": "c685dd2a9a1be6c9e863c21d0834b731f47a7cbdab259943efc37a4750996010",
+    "src/locks.ts": "4915f00753b80b76352e60f3fdf5ce13edf01758a597e41112dc445ff398b3fd",
+    "src/presentation.ts": "fcfc123346b9da92d93e87e8fad221b97879d5f2799b5d7795beec2bf32fb5bd",
+    "src/providers/index.ts": "540ceb1bcbcb0e133934d9f03b58ccb1e620b67381afdb00276e7040775cc8a2",
+    "src/providers/quota.ts": "cdec20396208d0dfb066aac794c67108fa8fb6305900b78de005c6a79c3786a0",
+    "src/repository.ts": "40aae31b7f42f6c1ce574c62fbb8152fc32ae232c5a56cad5a36f67746b95b02",
+    "src/runtime.ts": "993c4b96f9e42ebed580653bce0e1d1e54f80deedc10a290981ea42c085cce7a",
+    "src/scheduler.ts": "c63317bf5638d58692d5dab8f717fbbba9f48c4fec31a62b4f94d0c3c010aa80",
+    "src/schema.ts": "e8df2fb8f84451e8b811fe045fbd8721558988e402dc962cbdeeb14bc1abf67c",
+    "src/session-client.ts": "84bc99d3de51ae7bb8b1412d2406f66341ebb8dcabd331613b0a7d3340e24c8d",
+    "src/session-context.ts": "6acd9c1aaa4e5b38ebb4c3427b3144a6bd70845f235aca9c16313fb5e30dad16",
+    "src/session-rpc.ts": "2cd498fc3c50966f162d23077a7dc9a75b9426ff4dd694a3aea386ffe049c037",
+    "src/session-types.ts": "1b3d0b5f4e472e6d80c2bd9fb2b13387f1ddf21fd11c4c9acc98d880bda32a67",
+    "src/session-workspace.ts": "e1587125a3b5428b85244939c2dcf7f89f3af390c92e7d65494edd52c8f7de7a",
+    "src/sessions.ts": "8792aef805bbb06a3eeed7233d8a9bbb77242b67af0caa62054ee7ba4c2d756a",
+    "src/store.ts": "7a0a3fc94ed330e2daf7c39c10cedb8ac5b59f73b5839aa6201e65473681e9c3",
+    "src/supervisor.ts": "6b7915f036136f521f16da3184a147fb029f84920ad48670c533431636a99473",
+    "src/util.ts": "ae8a3857b19330b9cf86a120edcdebb6bddda8cf68179b9d19ce7baa90b0d70e",
+    "src/vault.ts": "c20c4bcaa3d9682e81b43adf78b6e521f831d0443f042937eeaa0a6570d2a42d"
+  },
+  "delivery": {
+    "workspace": true,
+    "committed": false,
+    "pushed": false,
+    "published": false
+  },
+  "workingDirectoryUpdate": {
+    "recordedAt": "2026-10-08T03:52:49.864781+00:00",
+    "behavior": "principal automatically uses its launch directory; no commit or project selection required",
+    "automatedTests": {
+      "passed": 85,
+      "failed": 0
+    },
+    "live": {
+      "directory": "/tmp/principal-directory-live-gltgk09d",
+      "sessionId": "9328154c-ab2d-4656-a35f-32f7fc071e14",
+      "provider": "codex",
+      "liveDirectory": true,
+      "markerRead": true,
+      "hostGitCreated": false
+    },
+    "terminal": "Home and installation directories automatically open chat; accounts/history/detach passed",
+    "sourceHashes": {
+      "src/session-workspace.ts": "80c4c7bf3ecf849eaf937a02243810edce686990fd62ed1e705025dd449372d3",
+      "src/session-types.ts": "7a474a87d2b0739c2aab8c53dc146c5f33365dc30d79e89db4c14e84d352c918",
+      "src/sessions.ts": "da83c376da5d307c93bc62fa9e2b55572af762c2cef17aa4caa9f9b7e18b180d",
+      "src/runtime.ts": "87d7172437d9907dae83f7ab4d2037a31f6188409b5f6ac956f25c82abf6bba9",
+      "src/chat.tsx": "abc106caa9c3b197c911115728bf72042af9fe6d374bf387a4f9fc329e2e9cb9",
+      "src/cli.ts": "03950a39000a727efe271725e1aed77c5e4835748c3c933d075784a7c6a908cb"
+    }
+  }
+}

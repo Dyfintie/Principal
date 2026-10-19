@@ -1,0 +1,52 @@
+{
+  "name": "principal-cli",
+  "version": "0.1.0",
+  "description": "Local management for native coding-agent profiles, sessions, and resources",
+  "type": "module",
+  "files": [
+    "bin",
+    "dist",
+    "runtime",
+    "README.md",
+    "docs"
+  ],
+  "bin": {
+    "principal": "bin/principal.mjs",
+    "principal-mcp": "bin/principal-mcp.mjs"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "node scripts/workflow.mjs build",
+    "start": "node bin/principal.mjs",
+    "check": "node scripts/workflow.mjs check",
+    "test": "node scripts/workflow.mjs test",
+    "test:runtime": "node scripts/workflow.mjs runtime-smoke",
+    "test:login": "node scripts/workflow.mjs login-smoke",
+    "test:live": "node scripts/workflow.mjs live-smoke",
+    "test:antigravity": "node scripts/workflow.mjs antigravity-smoke",
+    "test:history-copy": "node scripts/history-copy-smoke.mjs",
+    "package": "node scripts/package.mjs",
+    "serve": "node scripts/serve.mjs",
+    "install:local": "./install.sh --dev"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.0.0",
+    "commander": "^14.0.0",
+    "ink": "^6.0.0",
+    "minimatch": "^10.0.0",
+    "react": "^19.0.0",
+    "string-width": "8.3.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "typescript": "^5.9.0"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true
+  }
+}

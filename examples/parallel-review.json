@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "pool": "development",
+  "goal": "Independently review Principal's design and research comparable tools",
+  "tasks": [
+    {
+      "id": "plan-review",
+      "account": "codex-free-1",
+      "provider": "codex",
+      "mode": "read",
+      "dependsOn": [],
+      "writePaths": [],
+      "expectedOutputs": ["summary"],
+      "allowFallback": false,
+      "instruction": "Read README.md, docs/ARCHITECTURE.md, docs/STATUS.md, and prototype-docs/*.md. Review Principal's design for correctness, missing requirements, authentication and isolation weaknesses, quota accounting, scheduling, recovery, and integration failure cases. Return prioritized findings with file references, failure scenarios, and concrete fixes in your summary. Distinguish confirmed contradictions from hypotheses. Do not edit files, run tests, access credentials, or start other agents. Give brief progress updates describing the documents being examined."
+    },
+    {
+      "id": "similar-tools",
+      "account": "codex-free-2",
+      "provider": "codex",
+      "mode": "read",
+      "dependsOn": [],
+      "writePaths": [],
+      "expectedOutputs": ["summary"],
+      "allowFallback": false,
+      "instruction": "Read README.md and docs/ARCHITECTURE.md to understand Principal. Research existing tools offering multi-account Codex or Antigravity orchestration, parallel workers, isolated sign-in, per-account remaining usage, and quota-aware handoff. Use available web search or network tools and prioritize official repositories and documentation. Return a comparison with source URLs, supported providers, account pooling, parallelism, quota visibility, and important differences. Distinguish API-key gateways from native ChatGPT or Antigravity account integrations. If browsing or network access is unavailable, explicitly report that limitation and label any candidates from memory as unverified; do not claim live research. Do not edit files, run tests, access credentials, or start other agents. Give brief progress updates describing sources actually checked."
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "at": "2026-10-08T08:20:36.813Z",
+  "delivery": "local implementation, compiled CLI, updated daemon and runtime; uncommitted and unpushed",
+  "runtimeImage": "sha256:04c72c6f94e26c2fdf63bb7f238aeebf6a7c312529fec0d9cc7495b70f73b963",
+  "providers": {
+    "codex": "0.160.1",
+    "antigravity": "1.3.1"
+  },
+  "automated": {
+    "command": "npm test",
+    "tests": 112,
+    "passed": 112,
+    "failed": 0,
+    "typecheck": "npm run check passed"
+  },
+  "live": {
+    "codex": {
+      "script": "scripts/native-mode-smoke.py codex-free-1 --reply",
+      "nativeReply": "43",
+      "launchExitReturn": true,
+      "secondSwitchAndReturn": true,
+      "cleanDetach": true
+    },
+    "antigravity": {
+      "script": "scripts/native-mode-smoke.py antigravity-1",
+      "nativeInterfaceOpened": true,
+      "launchExitReturn": true,
+      "secondSwitchAndReturn": true,
+      "cleanDetach": true,
+      "nativeInferenceVerified": false,
+      "limitation": "Provider first-use terms and data-sharing choices require the user; these were not accepted by the test."
+    },
+    "workspace": {
+      "script": "scripts/native-workspace-smoke.mjs antigravity-1",
+      "evidence": "/tmp/principal-native-workspace-f0ocOM/evidence.json",
+      "directHostFiles": true,
+      "indexUnchangedUntilExplicitNativeGitAdd": true,
+      "nativeGitWrites": true,
+      "existingUserFilePreserved": true
+    },
+    "homePrivacy": {
+      "script": "scripts/native-home-smoke.mjs",
+      "stateAndConfigMasked": true,
+      "hostFilesModified": false
+    }
+  },
+  "semantics": {
+    "principalDefault": true,
+    "nativePromptOrSchemaInjection": false,
+    "nativeEditsHostDirectly": true,
+    "nativeRunsInIsolatedAccountContainer": true,
+    "separateHistories": true,
+    "returnToSamePrincipalSession": true,
+    "protocolRequiresNativeWorkingDirectory": true
+  }
+}

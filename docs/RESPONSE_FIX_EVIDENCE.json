@@ -1,0 +1,88 @@
+{
+  "recordedAt": "2026-10-08T06:12:05.301Z",
+  "scope": "Local cursor and Antigravity response fixes; other release gates are unchanged",
+  "automated": {
+    "command": "npm test",
+    "passed": 102,
+    "failed": 0,
+    "runtimeSyntax": "passed"
+  },
+  "terminal": {
+    "emulator": "pyte via temporary verification venv",
+    "sizes": [
+      "12x55",
+      "24x100"
+    ],
+    "cursor": "passed: actual row and column, empty, typed, Unicode, long input, multiline, slash menu, resize and repeated snapshot polling",
+    "chat": "passed: narrow-terminal navigation, command completion and detach",
+    "scroll": "passed: PageUp/PageDown, mouse and touchpad, draft preservation and cleanup"
+  },
+  "runtime": {
+    "imageId": "sha256:57a52515f411384aa0b00661ade04ecfbef869a4adef03317f4413599c306ed8",
+    "antigravity": "1.3.1",
+    "conversationalReasoningEffort": "medium"
+  },
+  "greeting": {
+    "at": "2026-10-08T06:08:33.119Z",
+    "sessionId": "58803805-e9b4-44a9-be10-714344ec52eb",
+    "directory": "/tmp/principal-antigravity-chat-63Flcv",
+    "directoryMode": true,
+    "nativeId": "f3b5f356-b7e5-4e27-ab7d-2ba04b23f99e",
+    "reply": "Hello! How can I help you today?",
+    "elapsedSeconds": 35,
+    "dispatchAt": "2026-10-08T06:07:58.742Z",
+    "completedAt": "2026-10-08T06:08:33.101Z",
+    "tools": 0,
+    "providerTurnSeconds": 34.359
+  },
+  "comparison": {
+    "baselineEndToEndSeconds": 120,
+    "mediumEndToEndSeconds": 35,
+    "note": "One live greeting each; end-to-end includes account waiting and runtime startup. This is not a latency guarantee."
+  },
+  "continuation": {
+    "lead": "antigravity-1",
+    "id": "7f1c9570-f144-48c6-927b-2112455a89ed",
+    "nativeId": "28ed6001-d846-430e-b3be-3bcb188f610f",
+    "continuedNativeId": "5342eef9-8136-46d7-80d5-88f28a429e45",
+    "turns": [
+      {
+        "id": "f77458dc-6f03-42aa-a00c-e85c02545b26",
+        "status": "completed",
+        "dispatchAt": "2026-10-08T06:08:34.876Z",
+        "completedAt": "2026-10-08T06:09:22.131Z"
+      },
+      {
+        "id": "5ef551bd-ed65-4ff7-9f2f-8a59eb31963f",
+        "status": "completed",
+        "dispatchAt": "2026-10-08T06:09:23.795Z",
+        "completedAt": "2026-10-08T06:09:47.087Z"
+      },
+      {
+        "id": "03ab3f81-373d-40cc-b342-f5a04e4d4cb1",
+        "status": "completed",
+        "dispatchAt": "2026-10-08T06:09:48.802Z",
+        "completedAt": "2026-10-08T06:10:05.132Z"
+      },
+      {
+        "id": "8fda9b49-ce64-45f0-b72b-059b4a648943",
+        "status": "completed",
+        "dispatchAt": "2026-10-08T06:10:07.813Z",
+        "completedAt": "2026-10-08T06:11:16.124Z"
+      }
+    ],
+    "checkpoint": "339c0ba4-0816-4f95-8d84-4f9db52d9bf9",
+    "duplicateSubmission": "passed",
+    "repeatedTurns": "passed",
+    "coldResumeSameNativeId": "passed",
+    "portableContinuation": "passed",
+    "tools": "Read unpredictable marker from isolated workspace",
+    "replies": [
+      "7053c051-047c-4d6d-853f-c26957a11f96",
+      "7053c051-047c-4d6d-853f-c26957a11f96",
+      "7053c051-047c-4d6d-853f-c26957a11f96",
+      "7053c051-047c-4d6d-853f-c26957a11f96"
+    ]
+  },
+  "deployment": "Built and installed locally; no commit, push or external deployment"
+}
