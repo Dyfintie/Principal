@@ -382,27 +382,30 @@ else
   CURRENT_SHELL="$(basename "${SHELL:-bash}")"
   CONFIGURED_FILE=""
 
-  if [ "${CURRENT_SHELL}" = "fish" ] || [ -n "${FISH_VERSION:-}" ]; then
-    if command -v fish >/dev/null 2>&1; then
-      fish -c "fish_add_path -U '${BIN_DIR}'" 2>/dev/null || true
-      CONFIGURED_FILE="Fish universal path (fish_add_path)"
-    fi
-  elif [ "${CURRENT_SHELL}" = "zsh" ] || [ -f "${HOME}/.zshrc" ]; then
-    CONFIG_FILE="${HOME}/.zshrc"
-    if ! grep -q "${BIN_DIR}" "${CONFIG_FILE}" 2>/dev/null; then
-      echo "" >> "${CONFIG_FILE}"
-      echo "# Added by Principal installer" >> "${CONFIG_FILE}"
-      echo "export PATH=\"${BIN_DIR}:\$PATH\"" >> "${CONFIG_FILE}"
-      CONFIGURED_FILE="${CONFIG_FILE}"
-    fi
-  else
-    CONFIG_FILE="${HOME}/.bashrc"
-    [ -f "${HOME}/.bash_profile" ] && [ ! -f "${HOME}/.bashrc" ] && CONFIG_FILE="${HOME}/.bash_profile"
-    if ! grep -q "${BIN_DIR}" "${CONFIG_FILE}" 2>/dev/null; then
-      echo "" >> "${CONFIG_FILE}"
-      echo "# Added by Principal installer" >> "${CONFIG_FILE}"
-      echo "export PATH=\"${BIN_DIR}:\$PATH\"" >> "${CONFIG_FILE}"
-      CONFIGURED_FILE="${CONFIG_FILE}"
+  # Do not modify permanent shell profiles if installing into temporary /tmp directories (e.g. during tests)
+  if [[ "${BIN_DIR}" != */tmp/* ]]; then
+    if [ "${CURRENT_SHELL}" = "fish" ] || [ -n "${FISH_VERSION:-}" ]; then
+      if command -v fish >/dev/null 2>&1; then
+        fish -c "fish_add_path -U '${BIN_DIR}'" 2>/dev/null || true
+        CONFIGURED_FILE="Fish universal path (fish_add_path)"
+      fi
+    elif [ "${CURRENT_SHELL}" = "zsh" ] || [ -f "${HOME}/.zshrc" ]; then
+      CONFIG_FILE="${HOME}/.zshrc"
+      if ! grep -q "${BIN_DIR}" "${CONFIG_FILE}" 2>/dev/null; then
+        echo "" >> "${CONFIG_FILE}"
+        echo "# Added by Principal installer" >> "${CONFIG_FILE}"
+        echo "export PATH=\"${BIN_DIR}:\$PATH\"" >> "${CONFIG_FILE}"
+        CONFIGURED_FILE="${CONFIG_FILE}"
+      fi
+    else
+      CONFIG_FILE="${HOME}/.bashrc"
+      [ -f "${HOME}/.bash_profile" ] && [ ! -f "${HOME}/.bashrc" ] && CONFIG_FILE="${HOME}/.bash_profile"
+      if ! grep -q "${BIN_DIR}" "${CONFIG_FILE}" 2>/dev/null; then
+        echo "" >> "${CONFIG_FILE}"
+        echo "# Added by Principal installer" >> "${CONFIG_FILE}"
+        echo "export PATH=\"${BIN_DIR}:\$PATH\"" >> "${CONFIG_FILE}"
+        CONFIGURED_FILE="${CONFIG_FILE}"
+      fi
     fi
   fi
 
