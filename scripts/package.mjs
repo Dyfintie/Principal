@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, rm, stat, chmod } from 'node:fs/promises';
+import { cp, mkdir, readFile, writeFile, rm, stat, chmod } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
@@ -36,6 +36,19 @@ async function main() {
   // 3. Copy essential files
   await cp(path.join(rootDir, 'bin'), path.join(bundleDir, 'bin'), { recursive: true });
   await cp(path.join(rootDir, 'dist'), path.join(bundleDir, 'dist'), { recursive: true });
+  // Ensure host-runtime.json in package uses generic 'node' rather than an ephemeral build-machine path
+  await writeFile(
+    path.join(bundleDir, 'dist', 'host-runtime.json'),
+    JSON.stringify(
+      {
+        executable: 'node',
+        version: process.version,
+        abi: process.versions.modules,
+      },
+      null,
+      2,
+    ) + '\n',
+  );
   await cp(path.join(rootDir, 'runtime'), path.join(bundleDir, 'runtime'), { recursive: true });
   await cp(path.join(rootDir, 'docs'), path.join(bundleDir, 'docs'), { recursive: true });
   await cp(path.join(rootDir, 'package.json'), path.join(bundleDir, 'package.json'));
@@ -88,7 +101,6 @@ async function main() {
   const tarballBytes = await readFile(tarballPath);
   const selfExtractingPath = path.join(distPackageDir, 'principal-installer.sh');
 
-  const { writeFile } = await import('node:fs/promises');
   await writeFile(
     selfExtractingPath,
     Buffer.concat([

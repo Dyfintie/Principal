@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFile, realpath } from 'node:fs/promises';
+import { readFile, realpath, stat } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { constants } from 'node:os';
@@ -31,8 +31,25 @@ try {
     }
 
     const currentExec = await realpath(process.execPath).catch(() => process.execPath);
-    if (runtime?.executable && currentExec !== runtime.executable) {
-      const child = spawn(runtime.executable, [fileURLToPath(import.meta.url), ...process.argv.slice(2)], {
+    let targetExec = null;
+    if (runtime?.executable && runtime.executable !== 'node') {
+      const isAvailable = await stat(runtime.executable).catch(() => null);
+      if (isAvailable && currentExec !== runtime.executable) {
+        targetExec = runtime.executable;
+      }
+    }
+
+    if (!targetExec) {
+      for (const candidate of ['/usr/bin/node', '/usr/local/bin/node', '/opt/homebrew/bin/node']) {
+        if (candidate !== currentExec && await stat(candidate).catch(() => null)) {
+          targetExec = candidate;
+          break;
+        }
+      }
+    }
+
+    if (targetExec) {
+      const child = spawn(targetExec, [fileURLToPath(import.meta.url), ...process.argv.slice(2)], {
         stdio: 'inherit',
         env: process.env,
       });
@@ -43,7 +60,7 @@ try {
         process.on(signal, handler);
       }
       child.once('error', (error) => {
-        console.error(`Principal cannot launch its build runtime (${runtime.executable}): ${error.message}\n${rebuild}`);
+        console.error(`Principal cannot launch runtime (${targetExec}): ${error.message}\n${rebuild}`);
         process.exitCode = 1;
       });
       child.once('exit', (code, signal) => {
@@ -52,7 +69,10 @@ try {
       });
     } else {
       if (Number(process.versions.node.split('.')[0]) < 24) {
-        throw new Error(`Node.js 24+ is required to run Principal (current: ${process.version}).`);
+        throw new Error(
+          `Node.js 24+ is required to run Principal (current: ${process.version}).\n` +
+          `Please install or switch to Node 24 (e.g. 'nvm install 24 && nvm use 24').`
+        );
       }
       const Database = createRequire(import.meta.url)('better-sqlite3');
       const db = new Database(':memory:');

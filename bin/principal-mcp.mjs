@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFile, realpath } from 'node:fs/promises';
+import { readFile, realpath, stat } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -32,9 +32,24 @@ try {
     }
 
     const currentExec = await realpath(process.execPath).catch(() => process.execPath);
-    const targetExec = await realpath(runtimeExecutable).catch(() => runtimeExecutable);
+    let targetExec = null;
+    if (runtimeExecutable && runtimeExecutable !== 'node') {
+      const isAvailable = await stat(runtimeExecutable).catch(() => null);
+      if (isAvailable && currentExec !== runtimeExecutable) {
+        targetExec = runtimeExecutable;
+      }
+    }
 
-    if (currentExec !== targetExec) {
+    if (!targetExec) {
+      for (const candidate of ['/usr/bin/node', '/usr/local/bin/node', '/opt/homebrew/bin/node']) {
+        if (candidate !== currentExec && await stat(candidate).catch(() => null)) {
+          targetExec = candidate;
+          break;
+        }
+      }
+    }
+
+    if (targetExec) {
       const child = spawn(targetExec, [fileURLToPath(import.meta.url), ...process.argv.slice(2)], {
         stdio: 'inherit',
         env: process.env,
