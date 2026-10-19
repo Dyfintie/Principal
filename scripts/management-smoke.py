@@ -111,11 +111,10 @@ try:
     # Menus expose profile operations without typing CLI commands.
     send(b'\r')
     receive('Profile actions')
-    receive('Jump to current run') if 'Jump to current run' not in captured else None
-    receive('Check authentication') if 'Check authentication' not in captured else None
-    send(b'\x1b[B')
-    time.sleep(0.15)
-    send(b'\r')
+    receive('Share account with friend') if 'Share account with friend' not in captured else None
+    receive('Rename profile') if 'Rename profile' not in captured else None
+    send(b'\x1b')
+    send(b'i')
     receive('synthetic@example.test')
     send(b'P')
     receive('No current run is recorded for fixture.')

@@ -633,50 +633,26 @@ function ManagementDashboard({
           ]
         : tab === 1
           ? [
-              { label: 'Add account / sign in', key: 'n' },
               ...(profile
                 ? [
-                    { label: 'Check authentication', key: 'i' },
-                    {
-                      label:
-                        profile.tool === 'antigravity'
-                          ? 'Antigravity sign-in options…'
-                          : 'Sign in using native tool',
-                      key: 'l',
-                    },
-                    ...(profile.tool === 'codex'
-                      ? [
-                          { label: 'Sign in with device code', key: 'D' },
-                          { label: 'Load existing Codex history', key: 'I' },
-                        ]
-                      : []),
-                    ...(profile.tool === 'antigravity'
-                      ? [{ label: 'Load existing Antigravity history (experimental)', key: 'I' }]
-                      : []),
-                    { label: 'Jump to current run…', key: 'P' },
-                    { label: 'Launch native tool with this profile', key: 's' },
-                    { label: 'Set as active profile (Hot Swap)', key: 'S' },
-                    { label: 'Show this profile’s conversation history', key: 'h' },
-                    { label: 'View profile details', key: 'e' },
-                    { label: 'Rename profile', key: 'r' },
-                    { label: 'Remove profile…', key: 'd' },
+                    { label: 'Add account / sign in', key: 'n' },
                     ...(profile && ['antigravity', 'codex'].includes(profile.tool)
                       ? [{ label: 'Share account with friend (Handoff code)…', key: 'W' }]
                       : []),
-                    ...(historyCursors[profile.id]
-                      ? [{ label: 'Import next history page', key: 'H' }]
-                      : []),
-                    ...(snapshot?.installations.find((i) => i.tool === profile.tool)?.capabilities
-                      .observer.supported
-                      ? [{ label: 'View optional observer setup', key: 'o' }]
-                      : []),
+                    { label: 'Import shared account handoff code…', key: 'Y' },
+                    { label: 'Rename profile', key: 'r' },
+                    { label: 'Remove profile…', key: 'd' },
                   ]
                 : selectedProfileRow
-                  ? [{ label: 'View account/session details', key: 'e' }]
-                  : []),
-              { label: 'Use an existing native login', key: 'a' },
-              { label: 'Advanced profile setup', key: 'N' },
-              { label: 'Import shared account handoff code…', key: 'Y' },
+                  ? [
+                      { label: 'Add account / sign in', key: 'n' },
+                      { label: 'View account/session details', key: 'e' },
+                      { label: 'Import shared account handoff code…', key: 'Y' },
+                    ]
+                  : [
+                      { label: 'Add account / sign in', key: 'n' },
+                      { label: 'Import shared account handoff code…', key: 'Y' },
+                    ]),
             ]
           : tab === 2
             ? [{ label: 'Refresh resource observations', key: 'u' }]
