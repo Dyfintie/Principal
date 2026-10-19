@@ -14,9 +14,10 @@ try {
     await runSwarmCli(args.slice(1));
   } else if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
     console.log(
-      'Principal · Interactive Terminal Account & Quota Manager (TUI)\n\n' +
+      'Principal · Interactive Terminal & Web Account & Quota Manager\n\n' +
       'Quick Start:\n' +
       '  principal                          Open interactive TUI dashboard\n' +
+      '  principal web / dashboard          Open browser-based graphical management dashboard\n' +
       '  principal launch [tool|profile]    Launch an AI agent (agy, codex, claude)\n' +
       '  principal handoff export [profile] Export scoped account credentials with limits\n' +
       '  principal handoff import <code>    Import account credentials from a friend\n' +
@@ -28,6 +29,9 @@ try {
     const { readFile } = await import('node:fs/promises');
     const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
     console.log(pkg.version || '0.1.2');
+  } else if (['web', 'ui'].includes(args[0])) {
+    const { startWebCommand } = await import('./management/web-server.js');
+    await startWebCommand(args.slice(1));
   } else if (['doctor', 'setup'].includes(args[0])) {
     const { Command } = await import('commander');
     const { managementDoctor } = await import('./management/commands.js');

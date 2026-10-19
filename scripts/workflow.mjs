@@ -1,4 +1,4 @@
-import { readFile, readdir, realpath } from 'node:fs/promises';
+import { readFile, readdir, realpath, cp } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -49,6 +49,7 @@ try {
           await run(executable, ['--check', `runtime/${file}`]);
         await run(executable, ['--check', 'bin/principal.mjs']);
         await run(executable, ['scripts/record-runtime.mjs']);
+        await cp(new URL('../src/management/web', import.meta.url), new URL('../dist/management/web', import.meta.url), { recursive: true }).catch(() => {});
       }
       if (task === 'test') {
         const tests = (await readdir(new URL('../tests/', import.meta.url)))

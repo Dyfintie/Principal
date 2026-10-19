@@ -430,6 +430,7 @@ echo -e "${BOLD}${GREEN}========================================================
 echo ""
 echo -e "Quick Start Guide:"
 echo -e "  ${BOLD}principal${RESET}                          Open interactive TUI dashboard"
+echo -e "  ${BOLD}principal web${RESET}                      Open browser-based graphical dashboard"
 echo -e "  ${BOLD}principal launch agy${RESET}               Launch Antigravity assistant"
 echo -e "  ${BOLD}principal launch cdx${RESET}               Launch OpenAI Codex assistant"
 echo -e "  ${BOLD}principal handoff import <code>${RESET}    Import shared account quota from a friend"

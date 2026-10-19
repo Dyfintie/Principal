@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Principal · Agent Management Dashboard</title>
+  <style>
+    :root {
+      --bg: #070a12;
+      --surface: #0f172a;
+      --surface-elevated: #1e293b;
+      --surface-hover: #273549;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(6, 182, 212, 0.3);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --primary: #06b6d4;
+      --primary-glow: rgba(6, 182, 212, 0.25);
+      --accent: #8b5cf6;
+      --accent-glow: rgba(139, 92, 246, 0.25);
+      --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.2);
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --font-mono: 'SF Mono', Menlo, Consolas, Monaco, monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: var(--text);
+    }
+    .brand-logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: #070a12;
+      font-size: 16px;
+      box-shadow: 0 0 16px var(--primary-glow);
+    }
+    .brand-title {
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .badge-version {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      background: var(--surface-elevated);
+      color: var(--primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--surface-elevated);
+      padding: 4px 10px;
+      border-radius: 9999px;
+      border: 1px solid var(--border);
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+    }
+    .status-dot.disconnected {
+      background: var(--danger);
+      box-shadow: 0 0 8px var(--danger);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-weight: 500;
+      font-size: 13px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface-elevated);
+      color: var(--text);
+      transition: all 0.15s ease;
+      text-decoration: none;
+    }
+    .btn:hover {
+      background: var(--surface-hover);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #070a12;
+      border-color: var(--primary);
+      font-weight: 600;
+    }
+    .btn-primary:hover {
+      background: #22d3ee;
+      box-shadow: 0 0 12px var(--primary-glow);
+    }
+    .btn-accent {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .btn-accent:hover {
+      background: #a78bfa;
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+    .btn-danger {
+      color: #fca5a5;
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: var(--danger);
+    }
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 12px;
+    }
+
+    main {
+      flex: 1;
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* Tabs */
+    .tabs-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+    .tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tab-btn:hover {
+      color: var(--text);
+      background: var(--surface);
+    }
+    .tab-btn.active {
+      color: var(--primary);
+      background: rgba(6, 182, 212, 0.1);
+      border-color: var(--border-accent);
+      font-weight: 600;
+    }
+
+    /* Quota Section */
+    .quota-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+    }
+    .quota-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .quota-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      opacity: 0.7;
+    }
+    .quota-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .quota-title {
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+    .quota-gauge-box {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      margin: 0.5rem 0;
+    }
+    .gauge-circle {
+      position: relative;
+      width: 84px;
+      height: 84px;
+    }
+    .gauge-svg {
+      transform: rotate(-90deg);
+      width: 100%;
+      height: 100%;
+    }
+    .gauge-bg {
+      fill: none;
+      stroke: var(--surface-elevated);
+      stroke-width: 7;
+    }
+    .gauge-fill {
+      fill: none;
+      stroke: var(--primary);
+      stroke-width: 7;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.6s ease;
+    }
+    .gauge-percent {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--text);
+    }
+    .quota-meta {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .quota-val-large {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .quota-countdown {
+      font-size: 12px;
+      color: var(--warning);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Profiles Grid */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 0.5rem;
+    }
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .profiles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+    .profile-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .profile-card:hover {
+      border-color: rgba(255, 255, 255, 0.16);
+      transform: translateY(-2px);
+    }
+    .profile-card.active-profile {
+      border-color: var(--primary);
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.12);
+    }
+    .profile-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .profile-label-box {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .profile-label {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .profile-email {
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+    .badge-active {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .profile-meters {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: var(--surface-elevated);
+      padding: 8px 12px;
+      border-radius: 8px;
+    }
+    .mini-meter-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+    .mini-bar-track {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 3px;
+    }
+    .mini-bar-fill {
+      height: 100%;
+      background: var(--primary);
+      border-radius: 2px;
+      transition: width 0.4s ease;
+    }
+
+    .profile-actions-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 0.75rem;
+      margin-top: auto;
+    }
+
+    /* Active Sessions Table */
+    .sessions-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .sessions-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    .sessions-table th {
+      background: var(--surface-elevated);
+      padding: 10px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
+    }
+    .sessions-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 13px;
+    }
+    .sessions-table tr:last-child td { border-bottom: none; }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.8);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .modal-box {
+      background: var(--surface);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      max-width: 540px;
+      width: 100%;
+      padding: 1.5rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      transform: scale(0.96);
+      transition: transform 0.2s ease;
+    }
+    .modal-backdrop.open .modal-box {
+      transform: scale(1);
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .form-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .form-input, .form-textarea, .form-select {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s ease;
+      width: 100%;
+    }
+    .form-textarea {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      resize: vertical;
+      min-height: 90px;
+    }
+    .form-input:focus, .form-textarea:focus, .form-select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-glow);
+    }
+    .modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      z-index: 1000;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      header { flex-direction: column; align-items: stretch; }
+      .header-actions { justify-content: flex-end; }
+      .quota-gauge-box { flex-direction: column; text-align: center; }
+      .profile-actions-bar { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <a href="/" class="brand">
+      <div class="brand-logo">P</div>
+      <div class="brand-title">
+        Principal
+        <span class="badge-version" id="version-tag">v0.1.5</span>
+      </div>
+    </a>
+
+    <div class="header-actions">
+      <div class="status-pill">
+        <span class="status-dot" id="live-dot"></span>
+        <span id="live-text">Live Sync</span>
+      </div>
+      <button class="btn btn-sm" onclick="openDoctorModal()">🩺 Doctor</button>
+      <button class="btn btn-primary btn-sm" onclick="openLaunchModal()">🚀 Launch Agent</button>
+    </div>
+  </header>
+
+  <!-- Main Body -->
+  <main>
+    <!-- Tool Tabs -->
+    <div class="tabs-bar">
+      <button class="tab-btn active" data-tool="antigravity" onclick="switchToolTab('antigravity')">
+        <span>✨</span> Antigravity
+      </button>
+      <button class="tab-btn" data-tool="codex" onclick="switchToolTab('codex')">
+        <span>🤖</span> OpenAI Codex
+      </button>
+      <button class="tab-btn" data-tool="claude" onclick="switchToolTab('claude')">
+        <span>💬</span> Claude Code
+      </button>
+      <button class="tab-btn" data-tool="copilot" onclick="switchToolTab('copilot')">
+        <span>🐙</span> Copilot
+      </button>
+    </div>
+
+    <!-- Quota & Headroom Overview -->
+    <section>
+      <div class="quota-container" id="quota-cards-container">
+        <!-- Injected via JS -->
+      </div>
+    </section>
+
+    <!-- Profiles & Account Management -->
+    <section>
+      <div class="section-header">
+        <div class="section-title">
+          <span>👥</span>
+          <span id="profiles-section-title">Antigravity Accounts</span>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn btn-sm btn-accent" onclick="openImportHandoffModal()">📥 Import Handoff</button>
+          <button class="btn btn-sm btn-primary" onclick="openAddAccountModal()">+ Add Account</button>
+        </div>
+      </div>
+
+      <div class="profiles-grid" id="profiles-grid" style="margin-top: 1rem;">
+        <!-- Injected via JS -->
+      </div>
+    </section>
+
+    <!-- Active Sessions -->
+    <section>
+      <div class="section-header">
+        <div class="section-title">
+          <span>⚡</span>
+          <span>Active Agent Sessions</span>
+        </div>
+      </div>
+      <div class="sessions-card" style="margin-top: 0.75rem;">
+        <table class="sessions-table">
+          <thead>
+            <tr>
+              <th>Agent & Profile</th>
+              <th>Status</th>
+              <th>Started</th>
+              <th>Identity / PID</th>
+              <th style="text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="sessions-table-body">
+            <tr>
+              <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 2rem;">No active agent processes running.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Add Account Modal -->
+  <div class="modal-backdrop" id="modal-add-account">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Add Account / Sign In</h3>
+        <button class="modal-close" onclick="closeModal('modal-add-account')">&times;</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Profile Label</label>
+        <input type="text" class="form-input" id="add-account-label" placeholder="e.g. personal, work, secondary">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Target Tool</label>
+        <select class="form-select" id="add-account-tool">
+          <option value="antigravity">Antigravity</option>
+          <option value="codex">OpenAI Codex</option>
+          <option value="claude">Claude Code</option>
+          <option value="copilot">GitHub Copilot</option>
+        </select>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted);">
+        Creating an account provisions an isolated sandbox on your machine while sharing the common provider history.
+      </p>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('modal-add-account')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitAddAccount()">Create Account</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Share Handoff Modal -->
+  <div class="modal-backdrop" id="modal-share-handoff">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Share Account Quota (Handoff)</h3>
+        <button class="modal-close" onclick="closeModal('modal-share-handoff')">&times;</button>
+      </div>
+      <input type="hidden" id="share-profile-id">
+      <div class="form-group">
+        <label class="form-label">Profile</label>
+        <div id="share-profile-name" style="font-weight: 600; color: var(--primary);"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Time Expiration Limit</label>
+        <select class="form-select" id="share-time-limit">
+          <option value="1h">1 Hour</option>
+          <option value="6h">6 Hours</option>
+          <option value="12h" selected>12 Hours</option>
+          <option value="24h">24 Hours (1 Day)</option>
+          <option value="72h">3 Days</option>
+          <option value="168h">7 Days (1 Week)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Weekly Quota Allowance Cap</label>
+        <select class="form-select" id="share-quota-limit">
+          <option value="10%">10% Headroom</option>
+          <option value="25%" selected>25% Headroom</option>
+          <option value="50%">50% Headroom</option>
+          <option value="75%">75% Headroom</option>
+          <option value="100%">100% (No Quota Cap)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Optional Passphrase (leave empty for none)</label>
+        <input type="password" class="form-input" id="share-passphrase" placeholder="Optional encryption passphrase">
+      </div>
+      <div id="share-result-container" style="display: none; flex-direction: column; gap: 8px;">
+        <label class="form-label">Armored Handoff Code (Give this to your friend):</label>
+        <textarea class="form-textarea" id="share-code-output" readonly onclick="this.select()"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('modal-share-handoff')">Close</button>
+        <button class="btn btn-primary" id="btn-generate-handoff" onclick="submitShareHandoff()">Generate Handoff Code</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Handoff Modal -->
+  <div class="modal-backdrop" id="modal-import-handoff">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Import Shared Account Handoff</h3>
+        <button class="modal-close" onclick="closeModal('modal-import-handoff')">&times;</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Handoff Code or Token Block</label>
+        <textarea class="form-textarea" id="import-token-input" placeholder="Paste the armored token block starting with -----BEGIN PRINCIPAL HANDOFF-----"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Passphrase (if password-protected by owner)</label>
+        <input type="password" class="form-input" id="import-passphrase" placeholder="Passphrase">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Custom Profile Label (optional)</label>
+        <input type="text" class="form-input" id="import-label" placeholder="e.g. friend_quota">
+      </div>
+      <div id="import-preview-box" style="display: none; background: var(--surface-elevated); padding: 10px; border-radius: 8px; font-size: 12px;"></div>
+      <div class="modal-footer">
+        <button class="btn btn-sm" onclick="previewImportToken()">Inspect Code</button>
+        <button class="btn btn-primary" onclick="submitImportHandoff()">Import to Sandbox</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rename Profile Modal -->
+  <div class="modal-backdrop" id="modal-rename">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Rename Profile</h3>
+        <button class="modal-close" onclick="closeModal('modal-rename')">&times;</button>
+      </div>
+      <input type="hidden" id="rename-profile-id">
+      <div class="form-group">
+        <label class="form-label">New Label</label>
+        <input type="text" class="form-input" id="rename-new-label">
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('modal-rename')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitRename()">Save Label</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Remove Profile Modal -->
+  <div class="modal-backdrop" id="modal-remove">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Remove Profile</h3>
+        <button class="modal-close" onclick="closeModal('modal-remove')">&times;</button>
+      </div>
+      <input type="hidden" id="remove-profile-id">
+      <p style="color: var(--text-muted);">
+        Are you sure you want to remove <strong id="remove-profile-label" style="color: var(--danger);"></strong>?
+      </p>
+      <p style="font-size: 12px; color: var(--text-dim);">
+        Credentials and session logs are retained safely in storage; only the profile registration in Principal is unlinked.
+      </p>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('modal-remove')">Cancel</button>
+        <button class="btn btn-danger" onclick="submitRemove()">Remove Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Launch Modal -->
+  <div class="modal-backdrop" id="modal-launch">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Launch Native AI Agent</h3>
+        <button class="modal-close" onclick="closeModal('modal-launch')">&times;</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tool</label>
+        <select class="form-select" id="launch-tool" onchange="updateLaunchProfiles()">
+          <option value="antigravity">Antigravity (agy)</option>
+          <option value="codex">OpenAI Codex (cdx)</option>
+          <option value="claude">Claude Code (cld)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Profile</label>
+        <select class="form-select" id="launch-profile-select"></select>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted);">
+        Launches an isolated native agent with the chosen profile credentials and quota sharing.
+      </p>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('modal-launch')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitLaunch()">Launch</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Doctor Modal -->
+  <div class="modal-backdrop" id="modal-doctor">
+    <div class="modal-box" style="max-width: 680px;">
+      <div class="modal-header">
+        <h3 class="modal-title">System Diagnostics (Doctor)</h3>
+        <button class="modal-close" onclick="closeModal('modal-doctor')">&times;</button>
+      </div>
+      <div id="doctor-content" style="max-height: 400px; overflow-y: auto; font-family: var(--font-mono); font-size: 12px; background: var(--bg); padding: 12px; border-radius: 8px;">
+        Loading diagnostics...
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('modal-doctor')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    let currentTool = 'antigravity';
+    let globalSnapshot = null;
+    let globalResources = [];
+
+    async function rpc(method, params = {}) {
+      const res = await fetch('/api/rpc', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Principal-Request': '1',
+        },
+        body: JSON.stringify({ method, params }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Request failed');
+      }
+      return data.result;
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'show';
+      setTimeout(() => { t.className = ''; }, 3500);
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+    function openModal(id) {
+      document.getElementById(id).classList.add('open');
+    }
+
+    function switchToolTab(tool) {
+      currentTool = tool;
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-tool') === tool);
+      });
+      document.getElementById('profiles-section-title').textContent =
+        (tool === 'antigravity' ? 'Antigravity' : tool === 'codex' ? 'OpenAI Codex' : tool === 'claude' ? 'Claude Code' : 'Copilot') + ' Accounts';
+      renderUI();
+    }
+
+    function renderUI() {
+      if (!globalSnapshot) return;
+      renderQuotas();
+      renderProfiles();
+      renderSessions();
+    }
+
+    function renderQuotas() {
+      const container = document.getElementById('quota-cards-container');
+      container.innerHTML = '';
+
+      const relevantResources = globalResources.filter(r => {
+        const prof = globalSnapshot.profiles.find(p => p.id === r.profileId);
+        return prof && prof.tool === currentTool;
+      });
+
+      if (!relevantResources.length) {
+        container.innerHTML = `
+          <div class="quota-card" style="grid-column: 1 / -1; text-align: center; color: var(--text-muted);">
+            No quota observations recorded yet for ${currentTool}. Quota is probed automatically when launching agents.
+          </div>`;
+        return;
+      }
+
+      // Group by bucket
+      const buckets = {};
+      for (const r of relevantResources) {
+        if (!buckets[r.bucket] || new Date(r.observedAt) > new Date(buckets[r.bucket].observedAt)) {
+          buckets[r.bucket] = r;
+        }
+      }
+
+      for (const [bucket, r] of Object.entries(buckets)) {
+        const val = Math.max(0, Math.min(100, r.value ?? 100));
+        const strokeDash = 2 * Math.PI * 36;
+        const offset = strokeDash - (val / 100) * strokeDash;
+        
+        let resetStr = '';
+        if (r.resetsAt) {
+          const diff = new Date(r.resetsAt) - new Date();
+          if (diff > 0) {
+            const days = Math.floor(diff / (86400000));
+            const hours = Math.floor((diff % 86400000) / 3600000);
+            resetStr = `⏱️ Resets in ${days > 0 ? days + 'd ' : ''}${hours}h`;
+          }
+        }
+
+        const bucketLabel = bucket === '3p-weekly' ? 'Claude / GPT-4o (Weekly)'
+          : bucket === 'gemini-weekly' ? 'Gemini Pro / Flash (Weekly)'
+          : bucket === 'gemini-5h' ? 'Gemini 5-Hour Window'
+          : bucket === 'codex-5h' ? 'Codex 5-Hour Limit'
+          : bucket;
+
+        const card = document.createElement('div');
+        card.className = 'quota-card';
+        card.innerHTML = `
+          <div class="quota-header">
+            <span class="quota-title">${bucketLabel}</span>
+            <span style="font-size: 11px; color: var(--text-dim);">${r.account || ''}</span>
+          </div>
+          <div class="quota-gauge-box">
+            <div class="gauge-circle">
+              <svg class="gauge-svg" viewBox="0 0 84 84">
+                <circle class="gauge-bg" cx="42" cy="42" r="36" />
+                <circle class="gauge-fill" cx="42" cy="42" r="36"
+                  stroke-dasharray="${strokeDash}"
+                  stroke-dashoffset="${offset}" />
+              </svg>
+              <div class="gauge-percent">${val.toFixed(1)}%</div>
+            </div>
+            <div class="quota-meta">
+              <div class="quota-val-large">${val.toFixed(2)}% remaining</div>
+              ${resetStr ? `<div class="quota-countdown">${resetStr}</div>` : ''}
+              <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Source: ${r.source || 'native observer'}</div>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      }
+    }
+
+    function renderProfiles() {
+      const grid = document.getElementById('profiles-grid');
+      grid.innerHTML = '';
+
+      const profiles = (globalSnapshot.profiles || []).filter(p => p.tool === currentTool);
+      const activeId = globalSnapshot.activeProfiles?.[currentTool];
+
+      if (!profiles.length) {
+        grid.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 2.5rem; background: var(--surface); border: 1px dashed var(--border); border-radius: 12px;">
+            <p>No profiles configured for ${currentTool}.</p>
+            <button class="btn btn-primary" style="margin-top: 1rem;" onclick="openAddAccountModal()">+ Add Account</button>
+          </div>`;
+        return;
+      }
+
+      for (const p of profiles) {
+        const isActive = p.id === activeId;
+        const card = document.createElement('div');
+        card.className = 'profile-card' + (isActive ? ' active-profile' : '');
+
+        card.innerHTML = `
+          <div class="profile-card-header">
+            <div class="profile-label-box">
+              <div class="profile-label">
+                ${p.label}
+                ${isActive ? '<span class="badge-active">ACTIVE</span>' : ''}
+              </div>
+              <div class="profile-email">${p.reportedAccount || 'Identity unverified'}</div>
+            </div>
+            <div style="font-size: 11px; color: ${p.auth === 'authenticated' ? 'var(--success)' : 'var(--warning)'}; font-weight: 600;">
+              ● ${p.auth}
+            </div>
+          </div>
+
+          <div class="profile-actions-bar">
+            ${!isActive ? `<button class="btn btn-sm btn-primary" onclick="swapProfile('${p.id}')">⚡ Hot Swap</button>` : ''}
+            <button class="btn btn-sm" onclick="openShareHandoffModal('${p.id}', '${p.label}')">🤝 Handoff</button>
+            <button class="btn btn-sm" onclick="openRenameModal('${p.id}', '${p.label}')">✏️ Rename</button>
+            <button class="btn btn-sm btn-danger" onclick="openRemoveModal('${p.id}', '${p.label}')">🗑️ Remove</button>
+          </div>
+        `;
+        grid.appendChild(card);
+      }
+    }
+
+    function renderSessions() {
+      const tbody = document.getElementById('sessions-table-body');
+      const invocations = (globalSnapshot.invocations || []).filter(i => i.lifecycle !== 'exited');
+
+      if (!invocations.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 2rem;">
+              No active agent sessions running right now.
+            </td>
+          </tr>`;
+        return;
+      }
+
+      tbody.innerHTML = '';
+      for (const inv of invocations) {
+        const prof = globalSnapshot.profiles.find(p => p.id === inv.profileId);
+        const started = new Date(inv.startedAt).toLocaleTimeString();
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${prof?.tool || 'agent'}</strong> (${prof?.label || 'default'})</td>
+          <td><span style="color: var(--success); font-weight: 600;">● Running</span></td>
+          <td>${started}</td>
+          <td style="font-family: var(--font-mono); font-size: 11px;">PID ${inv.identity?.pid || inv.wrapper?.pid || 'n/a'}</td>
+          <td style="text-align: right;">
+            <button class="btn btn-sm btn-danger" onclick="stopSession('${inv.id}')">Stop</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    async function swapProfile(profileId) {
+      try {
+        await rpc('profiles.swap', { tool: currentTool, target: profileId });
+        showToast('Active profile swapped successfully!');
+        await refreshAll();
+      } catch (err) {
+        alert('Swap failed: ' + err.message);
+      }
+    }
+
+    function openAddAccountModal() {
+      document.getElementById('add-account-label').value = '';
+      document.getElementById('add-account-tool').value = currentTool;
+      openModal('modal-add-account');
+    }
+
+    async function submitAddAccount() {
+      const label = document.getElementById('add-account-label').value.trim();
+      const tool = document.getElementById('add-account-tool').value;
+      if (!label) return alert('Enter a profile name.');
+      try {
+        await rpc('profiles.add', { label, tool, isolated: true });
+        closeModal('modal-add-account');
+        showToast(`Account ${label} created!`);
+        await refreshAll();
+      } catch (err) {
+        alert('Failed to add profile: ' + err.message);
+      }
+    }
+
+    function openShareHandoffModal(profileId, label) {
+      document.getElementById('share-profile-id').value = profileId;
+      document.getElementById('share-profile-name').textContent = label;
+      document.getElementById('share-result-container').style.display = 'none';
+      document.getElementById('btn-generate-handoff').style.display = 'inline-flex';
+      openModal('modal-share-handoff');
+    }
+
+    async function submitShareHandoff() {
+      const profile = document.getElementById('share-profile-id').value;
+      const timeLimit = document.getElementById('share-time-limit').value;
+      const quotaLimit = document.getElementById('share-quota-limit').value;
+      const passphrase = document.getElementById('share-passphrase').value || undefined;
+
+      try {
+        const res = await rpc('handoff.export', { profile, timeLimit, quotaLimit, passphrase });
+        document.getElementById('share-code-output').value = res.token;
+        document.getElementById('share-result-container').style.display = 'flex';
+        document.getElementById('btn-generate-handoff').style.display = 'none';
+        navigator.clipboard.writeText(res.token).catch(() => {});
+        showToast('Handoff code generated & copied to clipboard!');
+      } catch (err) {
+        alert('Export failed: ' + err.message);
+      }
+    }
+
+    function openImportHandoffModal() {
+      document.getElementById('import-token-input').value = '';
+      document.getElementById('import-passphrase').value = '';
+      document.getElementById('import-label').value = '';
+      document.getElementById('import-preview-box').style.display = 'none';
+      openModal('modal-import-handoff');
+    }
+
+    async function previewImportToken() {
+      const token = document.getElementById('import-token-input').value.trim();
+      const passphrase = document.getElementById('import-passphrase').value || undefined;
+      if (!token) return alert('Paste a token first.');
+      try {
+        const preview = await rpc('handoff.inspect', { token, passphrase });
+        const box = document.getElementById('import-preview-box');
+        box.style.display = 'block';
+        box.innerHTML = `
+          <strong>Provider:</strong> ${preview.metadata?.tool || 'unknown'}<br>
+          <strong>Owner:</strong> ${preview.metadata?.ownerEmail || 'unknown'}<br>
+          <strong>Time Limit:</strong> ${preview.constraints?.timeLimit || 'unlimited'}<br>
+          <strong>Quota Limit:</strong> ${preview.constraints?.quotaLimit || 'none'}
+        `;
+      } catch (err) {
+        alert('Invalid token: ' + err.message);
+      }
+    }
+
+    async function submitImportHandoff() {
+      const token = document.getElementById('import-token-input').value.trim();
+      const passphrase = document.getElementById('import-passphrase').value || undefined;
+      const label = document.getElementById('import-label').value.trim() || undefined;
+      if (!token) return alert('Paste a token first.');
+      try {
+        const res = await rpc('handoff.import', { token, passphrase, label });
+        closeModal('modal-import-handoff');
+        showToast(`Imported as profile ${res.profile?.label || 'shared'}!`);
+        await refreshAll();
+      } catch (err) {
+        alert('Import failed: ' + err.message);
+      }
+    }
+
+    function openRenameModal(id, label) {
+      document.getElementById('rename-profile-id').value = id;
+      document.getElementById('rename-new-label').value = label;
+      openModal('modal-rename');
+    }
+
+    async function submitRename() {
+      const profile = document.getElementById('rename-profile-id').value;
+      const label = document.getElementById('rename-new-label').value.trim();
+      if (!label) return alert('Enter a valid label.');
+      try {
+        await rpc('profiles.rename', { profile, label });
+        closeModal('modal-rename');
+        showToast('Profile renamed.');
+        await refreshAll();
+      } catch (err) {
+        alert('Rename failed: ' + err.message);
+      }
+    }
+
+    function openRemoveModal(id, label) {
+      document.getElementById('remove-profile-id').value = id;
+      document.getElementById('remove-profile-label').textContent = label;
+      openModal('modal-remove');
+    }
+
+    async function submitRemove() {
+      const profile = document.getElementById('remove-profile-id').value;
+      try {
+        await rpc('profiles.remove', { profile });
+        closeModal('modal-remove');
+        showToast('Profile removed.');
+        await refreshAll();
+      } catch (err) {
+        alert('Remove failed: ' + err.message);
+      }
+    }
+
+    function openLaunchModal() {
+      updateLaunchProfiles();
+      openModal('modal-launch');
+    }
+
+    function updateLaunchProfiles() {
+      const tool = document.getElementById('launch-tool').value;
+      const sel = document.getElementById('launch-profile-select');
+      sel.innerHTML = '';
+      const profs = (globalSnapshot?.profiles || []).filter(p => p.tool === tool);
+      for (const p of profs) {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.label + (p.reportedAccount ? ` (${p.reportedAccount})` : '');
+        sel.appendChild(opt);
+      }
+    }
+
+    async function submitLaunch() {
+      const tool = document.getElementById('launch-tool').value;
+      const profile = document.getElementById('launch-profile-select').value;
+      try {
+        await rpc('launch.prepare', { tool, profile, mode: 'chat' });
+        closeModal('modal-launch');
+        showToast(`Agent ${tool} launching...`);
+        await refreshAll();
+      } catch (err) {
+        alert('Launch failed: ' + err.message);
+      }
+    }
+
+    async function stopSession(id) {
+      if (!confirm('Are you sure you want to stop this agent session?')) return;
+      try {
+        await rpc('invocations.stop', { id, force: true });
+        showToast('Agent stopped.');
+        await refreshAll();
+      } catch (err) {
+        alert('Stop failed: ' + err.message);
+      }
+    }
+
+    async function openDoctorModal() {
+      openModal('modal-doctor');
+      const box = document.getElementById('doctor-content');
+      box.textContent = 'Running system health checks...';
+      try {
+        const doc = await fetch('/api/doctor').then(r => r.json());
+        box.textContent = JSON.stringify(doc, null, 2);
+      } catch (err) {
+        box.textContent = 'Diagnostics failed: ' + err.message;
+      }
+    }
+
+    async function refreshAll() {
+      try {
+        const [snap, res] = await Promise.all([
+          fetch('/api/snapshot').then(r => r.json()),
+          rpc('resources').catch(() => []),
+        ]);
+        globalSnapshot = snap;
+        globalResources = res;
+        renderUI();
+      } catch (err) {
+        console.error('Failed to load snapshot:', err);
+      }
+    }
+
+    // Initialize Real-time SSE
+    function initSSE() {
+      const liveDot = document.getElementById('live-dot');
+      const liveText = document.getElementById('live-text');
+      const es = new EventSource('/api/events');
+
+      es.onopen = () => {
+        liveDot.className = 'status-dot';
+        liveText.textContent = 'Live Sync';
+      };
+
+      es.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.snapshot) globalSnapshot = data.snapshot;
+          if (data.resources) globalResources = data.resources;
+          renderUI();
+        } catch (err) {
+          console.error('SSE parse error:', err);
+        }
+      };
+
+      es.onerror = () => {
+        liveDot.className = 'status-dot disconnected';
+        liveText.textContent = 'Reconnecting';
+      };
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      refreshAll();
+      initSSE();
+      setInterval(refreshAll, 10000);
+    });
+  </script>
+</body>
+</html>
