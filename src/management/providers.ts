@@ -47,8 +47,17 @@ const definitions = {
   },
 } as const;
 export async function findExecutable(name: string): Promise<string | null> {
+  const candidates = new Set<string>();
   for (const directory of (process.env.PATH ?? '').split(path.delimiter)) {
-    if (!directory || !path.isAbsolute(directory)) continue;
+    if (directory && path.isAbsolute(directory)) candidates.add(directory);
+  }
+  candidates.add(path.join(homedir(), '.local', 'bin'));
+  candidates.add('/usr/local/bin');
+  candidates.add('/usr/bin');
+  candidates.add('/bin');
+  candidates.add('/opt/homebrew/bin');
+
+  for (const directory of candidates) {
     const file = path.join(directory, name);
     try {
       await access(file, constants.X_OK);
