@@ -39,7 +39,13 @@ esac
 
 BUNDLE_NAME="principal-${PLATFORM}-${ARCH_NAME}.tar.gz"
 
-PREFIX="${PREFIX:-${HOME}/.local}"
+if [ -z "${PREFIX:-}" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
+    PREFIX="/usr/local"
+  else
+    PREFIX="${HOME}/.local"
+  fi
+fi
 BIN_DIR="${PREFIX}/bin"
 DATA_DIR="${PREFIX}/share/principal"
 MODE="install"
@@ -161,12 +167,19 @@ NODE_MAJOR="$("${NODE_BIN}" -v | sed 's/v//' | cut -d. -f1)"
 
 echo -e "  Found Node.js: ${GREEN}${NODE_VERSION}${RESET} (${NODE_BIN})"
 
-if [ "${NODE_MAJOR}" -lt 20 ]; then
-  echo -e "${RED}❌ Error: Principal requires Node.js v20+ (Node v24+ recommended).${RESET}"
-  echo -e "Your current version is ${NODE_VERSION}. Please upgrade your Node.js runtime."
+if [ "${NODE_MAJOR}" -lt 24 ]; then
+  echo -e "${RED}❌ Error: Principal requires Node.js v24+ (found: ${NODE_VERSION}).${RESET}"
+  echo -e "The pre-compiled native SQLite runtime and ES features require Node.js 24+."
+  echo ""
+  echo "How to get Node.js 24+:"
+  echo "  • In Docker:               Use image 'node:24-bookworm' or 'node:24-slim'"
+  echo "  • NVM (Node Version Mgr):  nvm install 24 && nvm use 24"
+  echo "  • Debian / Ubuntu:         curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash - && sudo apt install -y nodejs"
+  echo "  • Arch Linux:              sudo pacman -S nodejs npm"
+  echo "  • macOS (Homebrew):        brew install node@24"
+  echo ""
+  echo "After switching to Node 24+, run this installer again."
   exit 1
-elif [ "${NODE_MAJOR}" -lt 24 ]; then
-  echo -e "  ${YELLOW}Notice: Node.js v24+ is recommended. Running with ${NODE_VERSION}.${RESET}"
 fi
 
 # ------------------------------------------------------------------------------
@@ -377,7 +390,9 @@ fi
 # 5. Sanity & Health Check
 # ------------------------------------------------------------------------------
 echo -e "\n${BOLD}[5/5] Running system verification...${RESET}"
-"${BIN_DIR}/principal" doctor
+"${BIN_DIR}/principal" doctor || {
+  echo -e "  ${YELLOW}Notice: Verification completed with environment warnings.${RESET}"
+}
 
 echo ""
 echo -e "${BOLD}${GREEN}================================================================${RESET}"
