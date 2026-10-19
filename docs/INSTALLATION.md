@@ -177,6 +177,19 @@ principal launch agy
 
 ---
 
+## ⚡ Runtime Auto-Discovery & Node Compatibility
+
+Principal requires Node.js 24+ for its ES modules and pre-compiled native SQLite runtime. The launchers (`bin/principal.mjs` and `bin/principal-mcp.mjs`) and installer (`install.sh`) feature intelligent **runtime auto-discovery**:
+
+- **Transparent Version Switching**: If your current interactive shell is running an older Node version (e.g. Node 20 or Node 22 via `fnm`, `nvm`, or system packages), Principal automatically scans candidate runtimes across:
+  - FNM aliases and versions (`~/.local/share/fnm/aliases/default/bin/node`, `~/.local/share/fnm/node-versions/v24*`)
+  - NVM installations (`~/.nvm/versions/node/v24*`)
+  - Local and package manager paths (`~/.local/bin/node`, `/usr/local/bin/node`, `/opt/homebrew/bin/node`)
+- **Native ABI Verification**: Before delegating, Principal performs an inline verification check ensuring the candidate binary matches `better-sqlite3`'s native ABI (preventing `NODE_MODULE_VERSION` mismatches and `spawn ENOENT` errors).
+- **Zero Configuration**: If Node 24+ is installed anywhere on your system via standard version managers, Principal runs seamlessly without requiring you to switch versions manually in your shell.
+
+---
+
 ## 🧹 Uninstallation
 
 ```bash
