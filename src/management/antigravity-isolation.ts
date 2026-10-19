@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { lstat, mkdtemp, rm } from 'node:fs/promises';
+import { lstat, mkdtemp, rm, stat } from 'node:fs/promises';
 import { readFileSync, writeSync, closeSync } from 'node:fs';
 import { tmpdir, constants } from 'node:os';
 import path from 'node:path';
@@ -25,8 +25,30 @@ export async function isolatedAntigravityLaunch(
   await ensureSharedHistory(profile);
   const secretTool = await findExecutable('secret-tool');
   const gdbus = await findExecutable('gdbus');
-  if (!secretTool || !gdbus)
+  if (!secretTool || !gdbus) {
+    const tokenFile = path.join(profile.directory, 'antigravity-oauth-token');
+    const hasToken = await stat(tokenFile).then(() => true, () => false);
+    if (hasToken) {
+      return {
+        executable: spec.executable,
+        args: [...spec.args],
+        env: {
+          ...spec.env,
+          HOME: home,
+          XDG_CONFIG_HOME: path.join(home, '.config'),
+          XDG_DATA_HOME: path.join(home, '.local', 'share'),
+          XDG_CACHE_HOME: path.join(home, '.cache'),
+          XDG_STATE_HOME: path.join(home, '.local', 'state'),
+          XDG_RUNTIME_DIR: undefined,
+          PRINCIPAL_MANAGEMENT_SOCKET: managementPaths.socket,
+        },
+        keyringPassword: undefined,
+        trackNativePid: true,
+        cleanup: undefined,
+      };
+    }
     throw new Error('Install secret-tool and gdbus for isolated Antigravity logins');
+  }
   const service = await exec(
     gdbus,
     [

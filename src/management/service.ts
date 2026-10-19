@@ -78,6 +78,7 @@ const profileInput = z.object({
   isolated: z.boolean().default(false),
   sharedHistory: z.boolean().default(true),
   discovery: z.boolean().default(false),
+  handoff: z.boolean().default(false),
 });
 export class ManagementService {
   installations: Installation[] = [];
@@ -142,7 +143,11 @@ export class ManagementService {
     if (raw && typeof raw === 'object') parseProfileLabel((raw as Record<string, unknown>).label);
     const input = profileInput.parse(raw);
     const installation = this.installation(input.tool);
-    if (input.isolated && !installation.capabilities.configurationIsolation.supported)
+    if (
+      input.isolated &&
+      !input.handoff &&
+      !installation.capabilities.configurationIsolation.supported
+    )
       throw new Error(installation.capabilities.configurationIsolation.reason);
     if (input.isolated && input.directory)
       throw new Error('Choose --isolated or an existing --directory');
@@ -2222,6 +2227,7 @@ exec "$REAL_BIN" "$@"
       label: targetLabel,
       isolated: true,
       sharedHistory: true,
+      handoff: true,
     });
 
     if (!profile) {
