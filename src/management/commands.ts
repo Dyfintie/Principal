@@ -504,6 +504,59 @@ export function registerManagementCommands(
     });
 
   handoff
+    .command('inspect <codeOrFile>')
+    .description('Inspect a handoff key or file without importing it (check tool, account, and expiration)')
+    .option('--passphrase <password>', 'Optional passphrase to verify decryption')
+    .option('--json')
+    .action(async (codeOrFile, options, command) => {
+      const result: any = await managementRpc('handoff.inspect', {
+        data: codeOrFile,
+        passphrase: options.passphrase,
+      });
+
+      if (options.json) {
+        print(command, result);
+        return;
+      }
+
+      const lines: string[] = ['🔍 Account Handoff Token Inspection:'];
+      lines.push(
+        `  Tool:         ${result.tool === 'antigravity' ? 'Google Antigravity (agy)' : 'OpenAI Codex'}`,
+      );
+      lines.push(`  Account Hint: ${result.accountHint || 'unknown'}`);
+      lines.push(`  Label:        ${result.label || 'shared'}`);
+      lines.push(`  Encrypted:    ${result.encrypted ? 'Yes' : 'No'}`);
+      if (result.decryptStatus === 'verified') {
+        lines.push(`  Passphrase:   Verified ✓ (Credentials intact)`);
+      } else if (result.decryptStatus === 'invalid_passphrase') {
+        lines.push(`  Passphrase:   INCORRECT ✗ (Passphrase did not match)`);
+      } else if (result.decryptStatus === 'passphrase_required') {
+        lines.push(`  Passphrase:   Required (Pass --passphrase to verify decryption)`);
+      }
+
+      const c = result.constraints;
+      if (c?.expiresAt) {
+        if (result.expired) {
+          lines.push(`  Status:       ❌ EXPIRED (ended at ${new Date(c.expiresAt).toLocaleString()})`);
+        } else {
+          lines.push(
+            `  Status:       ✅ VALID (${result.hrsRemaining}h remaining, expires ${new Date(c.expiresAt).toLocaleString()})`,
+          );
+        }
+      } else {
+        lines.push(`  Status:       ✅ VALID (No expiration limit set)`);
+      }
+
+      if (c?.quotaLimitPercent !== undefined) {
+        lines.push(
+          `  Quota Budget: Max ${c.quotaLimitPercent}% weekly quota (Floor: ${c.allowedQuotaFloor?.toFixed(1) ?? 'N'}%)`,
+        );
+      }
+
+      print(command, lines.join('\n'));
+    });
+
+  handoff
     .command('status [profileOrTool]')
     .description('Check active handoff constraints and quota usage for imported profiles')
     .option('--json')

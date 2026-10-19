@@ -61,6 +61,7 @@ import {
   createHandoffBundle,
   parseAndValidateBundle,
   parseDurationToHours,
+  decryptPayload,
   copyToClipboard as copyHandoffClipboard,
 } from './account-handoff.js';
 
@@ -2257,6 +2258,77 @@ exec "$REAL_BIN" "$@"
       tool: profile.tool,
     };
   }
+  async inspectAccountHandoff(raw: unknown) {
+    const input = z
+      .object({
+        data: z.string().min(1),
+        passphrase: z.string().optional(),
+      })
+      .parse(raw);
+
+    let bundleText = input.data.trim();
+    try {
+      const s = await stat(bundleText);
+      if (s.isFile()) {
+        bundleText = await readFile(bundleText, 'utf8');
+      }
+    } catch {}
+
+    if (bundleText.startsWith('PRINCIPAL-HANDOFF:v1:')) {
+      const b64 = bundleText.slice('PRINCIPAL-HANDOFF:v1:'.length);
+      bundleText = Buffer.from(b64, 'base64').toString('utf8');
+    }
+
+    let bundle: any;
+    try {
+      bundle = JSON.parse(bundleText);
+    } catch {
+      throw new Error(
+        'Invalid handoff key format. Expected a valid PRINCIPAL-HANDOFF token or JSON file.',
+      );
+    }
+
+    const constraints = bundle.constraints;
+    let expired = false;
+    let msRemaining: number | undefined;
+    let hrsRemaining: string | undefined;
+
+    if (constraints?.expiresAt) {
+      msRemaining = Date.parse(constraints.expiresAt) - Date.now();
+      hrsRemaining = (msRemaining / (3600 * 1000)).toFixed(1);
+      if (msRemaining <= 0) {
+        expired = true;
+      }
+    }
+
+    let decryptStatus = 'untested';
+    if (bundle.encrypted) {
+      if (input.passphrase) {
+        try {
+          decryptPayload(bundle.payload, input.passphrase, bundle.salt, bundle.iv, bundle.authTag);
+          decryptStatus = 'verified';
+        } catch {
+          decryptStatus = 'invalid_passphrase';
+        }
+      } else {
+        decryptStatus = 'passphrase_required';
+      }
+    } else {
+      decryptStatus = 'not_encrypted';
+    }
+
+    return {
+      tool: bundle.tool,
+      label: bundle.label,
+      accountHint: bundle.accountHint,
+      encrypted: !!bundle.encrypted,
+      decryptStatus,
+      expired,
+      msRemaining,
+      hrsRemaining,
+      constraints,
+    };
+  }
   async importAccountHandoff(raw: unknown) {
     const input = z
       .object({
@@ -2278,6 +2350,13 @@ exec "$REAL_BIN" "$@"
       bundleText,
       input.passphrase,
     );
+
+    if (constraints?.expiresAt && Date.now() >= Date.parse(constraints.expiresAt)) {
+      throw new Error(
+        `This handoff key has already expired (ended at ${new Date(constraints.expiresAt).toLocaleString()}). Cannot import an expired key.`,
+      );
+    }
+
     const installation = this.installation(bundle.tool);
 
     let targetLabel = input.label?.trim() || bundle.label || `${bundle.tool}-shared`;
@@ -2699,6 +2778,8 @@ exec "$REAL_BIN" "$@"
         return this.exportAccountHandoff(raw);
       case 'handoff.import':
         return this.importAccountHandoff(raw);
+      case 'handoff.inspect':
+        return this.inspectAccountHandoff(raw);
       case 'resources':
         return this.store.resources();
       case 'resources.refresh':

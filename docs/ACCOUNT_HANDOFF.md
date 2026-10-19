@@ -143,7 +143,20 @@ principal handoff export cdx-secondary --passphrase "secret" --time-limit 1d --q
 principal ho export antigravity --time-limit 6h --quota-limit 25% --clip
 ```
 
-#### 2. Importing an Account (Recipient)
+#### 2. Inspecting a Handoff Key Before Import (Recipient)
+Recipient **f2** can inspect any handoff code or file to check whether it is valid or expired, see the remaining time, and inspect the quota budget before importing:
+```bash
+# Inspect an armored token string:
+principal handoff inspect "PRINCIPAL-HANDOFF:v1:ey..."
+
+# Inspect a file:
+principal handoff inspect ./friend.pauth
+
+# Inspect an encrypted bundle with passphrase verification:
+principal handoff inspect ./friend.pauth --passphrase "secret"
+```
+
+#### 3. Importing an Account (Recipient)
 ```bash
 # Import an armored bundle directly from CLI argument:
 principal handoff import "PRINCIPAL-HANDOFF:v1:ey..." --passphrase "secret"
@@ -152,7 +165,7 @@ principal handoff import "PRINCIPAL-HANDOFF:v1:ey..." --passphrase "secret"
 principal handoff import ./friend.pauth --label "shared-antigravity"
 ```
 
-#### 3. Checking Handoff Status & Remaining Limits
+#### 4. Checking Handoff Status & Remaining Limits
 ```bash
 # View active handoff profiles, remaining time, and quota allowance:
 principal handoff status
@@ -161,7 +174,7 @@ principal handoff status
 principal handoff status --json
 ```
 
-#### 4. Manual Profile Removal & Total Purge
+#### 5. Manual Profile Removal & Total Purge
 ```bash
 # Soft removal (marks profile removed, preserves credentials & history):
 principal profiles remove <profile-id-or-label>

@@ -596,3 +596,58 @@ test('service.tick automatically purges idle expired handoff profiles everywhere
     false,
   );
 });
+
+test('service.inspectAccountHandoff identifies valid and expired keys before import', async () => {
+  const store = new ManagementStore(':memory:');
+  const service = new ManagementService(store, await environment());
+
+  const mockDir = path.join(root, 'inspect-prof');
+  await mkdir(mockDir, { recursive: true });
+  await writeFile(
+    path.join(mockDir, 'antigravity-oauth-token'),
+    JSON.stringify({ token: { access_token: 'valid-tok' } }),
+  );
+
+  const mockProfile = {
+    id: 'prof-inspect-1',
+    tool: 'antigravity',
+    label: 'inspect-src',
+    directory: mockDir,
+    isolated: false,
+    createdAt: new Date().toISOString(),
+    auth: 'authenticated',
+    authObservedAt: null,
+    reportedAccount: 'alice@example.com',
+    plan: null,
+  };
+
+  // 1. Valid token (expires in 2 hours)
+  const validBundle = await createHandoffBundle(mockProfile, {
+    timeLimitHours: 2,
+    quotaLimitPercent: 15,
+  });
+
+  const inspectedValid = await service.inspectAccountHandoff({ data: validBundle.armoredToken });
+  assert.equal(inspectedValid.tool, 'antigravity');
+  assert.equal(inspectedValid.expired, false);
+  assert.equal(inspectedValid.constraints.timeLimitHours, 2);
+  assert.equal(inspectedValid.constraints.quotaLimitPercent, 15);
+  assert.ok(inspectedValid.msRemaining > 0);
+
+  // 2. Expired token (expires in the past)
+  const expiredBundle = await createHandoffBundle(mockProfile, {
+    expiresAt: new Date(Date.now() - 3600_000).toISOString(),
+  });
+
+  const inspectedExpired = await service.inspectAccountHandoff({ data: expiredBundle.armoredToken });
+  assert.equal(inspectedExpired.expired, true);
+  assert.ok(inspectedExpired.msRemaining <= 0);
+
+  // 3. Importing an expired token must be rejected immediately
+  await assert.rejects(
+    async () => {
+      await service.importAccountHandoff({ data: expiredBundle.armoredToken });
+    },
+    /This handoff key has already expired/,
+  );
+});
