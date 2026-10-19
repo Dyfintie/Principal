@@ -25,7 +25,9 @@ try {
       '  /launch · /swap · /usage · /sessions · /accounts · /help',
     );
   } else if (args.length === 1 && ['--version', '-V'].includes(args[0])) {
-    console.log('0.1.0');
+    const { readFile } = await import('node:fs/promises');
+    const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+    console.log(pkg.version || '0.1.2');
   } else if (['doctor', 'setup'].includes(args[0])) {
     const { Command } = await import('commander');
     const { managementDoctor } = await import('./management/commands.js');

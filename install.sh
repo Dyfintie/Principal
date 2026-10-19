@@ -334,6 +334,10 @@ chmod +x "${BIN_DIR}/principal" "${BIN_DIR}/principal-mcp"
 echo -e "  ${GREEN}✓ Created symlink: ${BIN_DIR}/principal${RESET}"
 echo -e "  ${GREEN}✓ Created symlink: ${BIN_DIR}/principal-mcp${RESET}"
 
+# Terminate any running background daemon so new code takes effect immediately
+pkill -f "daemon.js" 2>/dev/null || true
+rm -f "${HOME}/.local/state/principal/management/manager.sock" 2>/dev/null || true
+
 # ------------------------------------------------------------------------------
 # 4. Shell PATH Verification & Auto-Configuration
 # ------------------------------------------------------------------------------
