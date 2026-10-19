@@ -137,50 +137,75 @@ fi
 # ------------------------------------------------------------------------------
 echo -e "\n${BOLD}[1/5] Checking environment & Node.js...${RESET}"
 
-NODE_BIN="$(command -v node || true)"
-if [ -z "${NODE_BIN}" ]; then
-  for candidate in /usr/bin/node /usr/local/bin/node /opt/homebrew/bin/node; do
-    if [ -x "${candidate}" ]; then
-      NODE_BIN="${candidate}"
-      break
+find_node24() {
+  local candidates=()
+  if command -v node >/dev/null 2>&1; then
+    candidates+=("$(command -v node)")
+  fi
+  if [ -d "${HOME}/.local/share/fnm" ]; then
+    [ -x "${HOME}/.local/share/fnm/aliases/default/bin/node" ] && candidates+=("${HOME}/.local/share/fnm/aliases/default/bin/node")
+    [ -x "${HOME}/.local/share/fnm/current/bin/node" ] && candidates+=("${HOME}/.local/share/fnm/current/bin/node")
+    for f in "${HOME}"/.local/share/fnm/node-versions/v24*/installation/bin/node; do
+      [ -x "$f" ] && candidates+=("$f")
+    done
+    for f in "${HOME}"/.local/share/fnm/node-versions/v25*/installation/bin/node; do
+      [ -x "$f" ] && candidates+=("$f")
+    done
+  fi
+  if [ -d "${HOME}/.nvm" ]; then
+    [ -x "${HOME}/.nvm/current/bin/node" ] && candidates+=("${HOME}/.nvm/current/bin/node")
+    for n in "${HOME}"/.nvm/versions/node/v24*/bin/node; do
+      [ -x "$n" ] && candidates+=("$n")
+    done
+    for n in "${HOME}"/.nvm/versions/node/v25*/bin/node; do
+      [ -x "$n" ] && candidates+=("$n")
+    done
+  fi
+  for s in "${HOME}/.volta/bin/node" "${HOME}/.local/bin/node" /usr/local/bin/node /opt/homebrew/bin/node /usr/bin/node; do
+    [ -x "$s" ] && candidates+=("$s")
+  done
+
+  for c in "${candidates[@]}"; do
+    if [ -x "$c" ]; then
+      local v major
+      v="$("$c" -v 2>/dev/null || true)"
+      major="$(echo "$v" | sed 's/v//' | cut -d. -f1)"
+      if [ -n "$major" ] && [ "$major" -ge 24 ] 2>/dev/null; then
+        echo "$c"
+        return 0
+      fi
     fi
   done
-fi
+  return 1
+}
+
+NODE_BIN="$(find_node24 || true)"
 
 if [ -z "${NODE_BIN}" ]; then
-  echo -e "${RED}❌ Error: Node.js runtime not found.${RESET}"
-  echo -e "Principal requires Node.js v24+ (Node v20+ minimum) to run."
-  echo ""
-  echo "To install Node.js in seconds, run:"
-  echo "  • NVM (recommended):       curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash && nvm install 24"
-  echo "  • On Arch Linux:           sudo pacman -S nodejs npm"
-  echo "  • On Ubuntu / Debian:      curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash - && sudo apt install -y nodejs"
-  echo "  • On Fedora:               sudo dnf install -y nodejs"
-  echo "  • On macOS (Homebrew):     brew install node@24"
-  echo ""
-  echo "Then run this installer again."
-  exit 1
-fi
-
-NODE_VERSION="$("${NODE_BIN}" -v)"
-NODE_MAJOR="$("${NODE_BIN}" -v | sed 's/v//' | cut -d. -f1)"
-
-echo -e "  Found Node.js: ${GREEN}${NODE_VERSION}${RESET} (${NODE_BIN})"
-
-if [ "${NODE_MAJOR}" -lt 24 ]; then
-  echo -e "${RED}❌ Error: Principal requires Node.js v24+ (found: ${NODE_VERSION}).${RESET}"
+  CURRENT_NODE="$(command -v node 2>/dev/null || true)"
+  if [ -n "${CURRENT_NODE}" ]; then
+    FOUND_VER="$("${CURRENT_NODE}" -v 2>/dev/null || echo "unknown")"
+    echo -e "${RED}❌ Error: Principal requires Node.js v24+ (found: ${FOUND_VER} at ${CURRENT_NODE}).${RESET}"
+  else
+    echo -e "${RED}❌ Error: Node.js runtime not found.${RESET}"
+  fi
   echo -e "The pre-compiled native SQLite runtime and ES features require Node.js 24+."
   echo ""
   echo "How to get Node.js 24+:"
+  echo "  • NVM (recommended):       curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash && nvm install 24 && nvm use 24"
+  echo "  • FNM (Fast Node Mgr):     fnm install 24 && fnm default 24"
   echo "  • In Docker:               Use image 'node:24-bookworm' or 'node:24-slim'"
-  echo "  • NVM (Node Version Mgr):  nvm install 24 && nvm use 24"
   echo "  • Debian / Ubuntu:         curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash - && sudo apt install -y nodejs"
   echo "  • Arch Linux:              sudo pacman -S nodejs npm"
   echo "  • macOS (Homebrew):        brew install node@24"
   echo ""
-  echo "After switching to Node 24+, run this installer again."
+  echo "After installing or switching to Node 24+, run this installer again."
   exit 1
 fi
+
+NODE_VERSION="$("${NODE_BIN}" -v)"
+echo -e "  Found Node.js: ${GREEN}${NODE_VERSION}${RESET} (${NODE_BIN})"
+export PATH="$(dirname "${NODE_BIN}"):${PATH}"
 
 # ------------------------------------------------------------------------------
 # 2. Determine Installation Source
