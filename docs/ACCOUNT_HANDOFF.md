@@ -56,11 +56,21 @@ graph TD
 ### Containment & Enforcement Guarantees:
 1. **Cryptographic Tamper-Resistance**: AES-256-GCM authenticated encryption with a user-supplied passphrase, derived via `scrypt` (salt 32 bytes, N=32768, r=8, p=1). Constraints are embedded inside the encrypted payload. Modifying the time or quota limits invalidates the authentication tag.
 2. **Delta Quota Budgeting**: When exporting, Principal captures the current remaining quota as a baseline (e.g., $85\%$ remaining). If f1 sets `--quota-limit 20%`, f2's cutoff floor is set to $85\% - 20\% = 65\%$ remaining. Even if f1 already used part of the quota, f2 is strictly limited to their allotted slice.
-3. **Double Guard (Pre-Launch & In-Flight)**:
-   - **Pre-Launch Guard** (`service.prepare`): Verifies `Date.now() < expiresAt` and `currentHeadroom > allowedQuotaFloor` before starting any agent.
-   - **In-Flight Runtime Guard** (`service.tick` & `service.observe`): Real-time statusline observation callbacks and background ticks monitor active sessions. If the time limit or quota floor is hit, Principal immediately stops the agent process (`SIGTERM` -> `SIGKILL`).
-4. **Automatic Credential Scrubbing**: Upon constraint breach or expiration, the credentials file (`antigravity-oauth-token` or `auth.json`) in the recipient's isolated sandbox is immediately overwritten with `{}` and scrubbed.
-5. **Instant Revocation**: The account owner can revoke access at any time from:
+3. **Double Guard & Background Daemon (Pre-Launch, In-Flight & Idle Scan)**:
+   - **Pre-Launch Guard** (`service.prepare`): Verifies `Date.now() < expiresAt` and `currentHeadroom > allowedQuotaFloor` before starting any agent. If expired or exhausted, the profile is purged immediately.
+   - **In-Flight Runtime Guard** (`service.tick` & `service.observe`): Real-time statusline observation callbacks and periodic background daemon ticks monitor active sessions. If the time limit or quota floor is hit, Principal immediately stops the agent process (`SIGTERM` -> `SIGKILL`) and purges the profile.
+   - **Idle Expiration Scan** (`service.tick`): Even when no agent is actively launched, the daemon continuously monitors all handoff profiles and purges them the moment their time expires.
+4. **Total Data Purge Everywhere (Zero Residue)**:
+   Upon constraint breach or expiration, Principal does not merely mark the profile inactive—it executes an atomic **Total Purge**:
+   - **Profile Record**: Removed from SQLite (`records` table `kind='profile'`).
+   - **Usage Observations**: All quota/token observations (`kind='resource'`) for this profile are permanently deleted from database and unified inventory.
+   - **Auth Observations**: All auth logs (`kind='auth-observation'`) for this profile are deleted.
+   - **Sandboxes & Tokens**: The isolated profile sandbox directory (`~/.local/state/principal/profiles/<id>`), token files (`antigravity-oauth-token`, `auth.json`), and settings on disk are deleted (`rm -rf`).
+   - **Active Pointers**: Profile references in `settings` (`active-profiles`, `ui.selected`) are cleaned up.
+   - Zero ghost records remain in `principal usage`, `principal profiles`, `principal doctor`, or disk.
+5. **Headless & Container-Ready Direct Launch**:
+   Handoff profiles in Docker or headless environments (where desktop Secret Service, `gdbus`, or `secret-tool` are unavailable) launch seamlessly via direct token binding without waiting on native keyring IPC, completely preventing startup timeouts.
+6. **Instant Revocation**: The account owner can revoke access at any time from:
    - Google: `https://myaccount.google.com/permissions` -> remove **Google Cloud Code Assist** / **Antigravity**.
    - OpenAI: `https://platform.openai.com/api-keys` or Codex settings.
 
@@ -149,6 +159,17 @@ principal handoff status
 
 # JSON output for scripting:
 principal handoff status --json
+```
+
+#### 4. Manual Profile Removal & Total Purge
+```bash
+# Soft removal (marks profile removed, preserves credentials & history):
+principal profiles remove <profile-id-or-label>
+
+# Complete total purge (permanently wipes profile, credentials, sandboxes, and usage data everywhere):
+principal profiles purge <profile-id-or-label>
+# or
+principal profiles remove <profile-id-or-label> --purge
 ```
 
 ### B. Interactive TUI & Slash Commands

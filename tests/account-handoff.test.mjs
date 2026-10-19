@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -374,14 +374,14 @@ test('service.prepare enforces pre-launch handoff constraints and scrubs expired
         wrapper,
       });
     },
-    /Account handoff expired: time limit \(4h\) ended/,
+    /Account handoff expired and was purged: time limit \(4h\) ended/,
   );
 
-  const scrubbedContent = await readFile(path.join(dir1, 'antigravity-oauth-token'), 'utf8');
-  assert.equal(scrubbedContent.trim(), '{}');
-  const updatedProf = store.profile(expiredProfile.id);
-  assert.equal(updatedProf.auth, 'unauthenticated');
-  assert.equal(updatedProf.handoffConstraints.status, 'time-expired');
+  assert.equal(store.get('profile', expiredProfile.id), null);
+  assert.equal(
+    await stat(path.join(dir1, 'antigravity-oauth-token')).then(() => true, () => false),
+    false,
+  );
 
   // 2. Quota floor reached profile
   const dir2 = path.join(root, 'quota-exhausted-prof');
@@ -427,14 +427,15 @@ test('service.prepare enforces pre-launch handoff constraints and scrubs expired
         wrapper,
       });
     },
-    /Account handoff quota limit reached: owner allocated 20% of weekly quota/,
+    /Account handoff quota limit reached and was purged: owner allocated 20% of weekly quota/,
   );
 
-  const scrubbedQuotaContent = await readFile(path.join(dir2, 'antigravity-oauth-token'), 'utf8');
-  assert.equal(scrubbedQuotaContent.trim(), '{}');
-  const updatedQuotaProf = store.profile(quotaProfile.id);
-  assert.equal(updatedQuotaProf.auth, 'unauthenticated');
-  assert.equal(updatedQuotaProf.handoffConstraints.status, 'quota-exhausted');
+  assert.equal(store.get('profile', quotaProfile.id), null);
+  assert.equal(store.resources().filter((r) => r.profileId === quotaProfile.id).length, 0);
+  assert.equal(
+    await stat(path.join(dir2, 'antigravity-oauth-token')).then(() => true, () => false),
+    false,
+  );
 });
 
 test('service.observe stops active invocation and scrubs credentials when quota floor is breached in-flight', async () => {
@@ -534,9 +535,64 @@ test('service.observe stops active invocation and scrubs credentials when quota 
   });
 
   assert.equal(stopRequested, true, 'Invocation must be stopped when quota floor is breached');
-  const updatedProf = store.profile(profile.id);
-  assert.equal(updatedProf.auth, 'unauthenticated');
-  assert.equal(updatedProf.handoffConstraints.status, 'quota-exhausted');
-  const scrubbed = await readFile(path.join(dir, 'antigravity-oauth-token'), 'utf8');
-  assert.equal(scrubbed.trim(), '{}');
+  assert.equal(store.get('profile', profile.id), null);
+  assert.equal(store.resources().filter((r) => r.profileId === profile.id).length, 0);
+  assert.equal(
+    await stat(path.join(dir, 'antigravity-oauth-token')).then(() => true, () => false),
+    false,
+  );
+});
+
+test('service.tick automatically purges idle expired handoff profiles everywhere', async () => {
+  const store = new ManagementStore(':memory:');
+  const service = new ManagementService(store, await environment());
+
+  const dir = path.join(root, 'idle-expired-prof');
+  await mkdir(dir, { recursive: true });
+  await writeFile(path.join(dir, 'antigravity-oauth-token'), JSON.stringify({ token: 'idle-secret' }));
+
+  const profile = store.put('profile', {
+    id: 'prof-idle-expired',
+    tool: 'antigravity',
+    label: 'idle-expired-agy',
+    directory: dir,
+    isolated: false,
+    createdAt: new Date().toISOString(),
+    auth: 'authenticated',
+    authObservedAt: null,
+    reportedAccount: 'idle@example.com',
+    plan: null,
+    handoffConstraints: {
+      timeLimitHours: 1,
+      expiresAt: new Date(Date.now() - 60_000).toISOString(),
+      status: 'active',
+    },
+  });
+
+  store.put('resource', {
+    id: 'res-idle-1',
+    profileId: profile.id,
+    metric: 'quota-remaining',
+    bucket: 'gemini-weekly',
+    value: 90,
+    unit: 'percent',
+    source: 'native',
+    sourceKind: 'official',
+    observedAt: new Date().toISOString(),
+  });
+
+  store.setActiveProfile('antigravity', profile.id);
+  assert.equal(store.activeProfiles().antigravity, profile.id);
+
+  // Run tick
+  await service.tick();
+
+  // Profile must be completely wiped everywhere
+  assert.equal(store.get('profile', profile.id), null);
+  assert.equal(store.resources().filter((r) => r.profileId === profile.id).length, 0);
+  assert.equal(store.activeProfiles().antigravity, undefined);
+  assert.equal(
+    await stat(path.join(dir, 'antigravity-oauth-token')).then(() => true, () => false),
+    false,
+  );
 });

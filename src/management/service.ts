@@ -10,7 +10,7 @@ import {
 import { copilotAuth, copilotQuota } from './copilot.js';
 import { probeAntigravity } from './antigravity-probe.js';
 import { evaluateQuotaAlerts, dispatchAlert } from './alerts.js';
-import { realpath, stat, writeFile, mkdir, readFile, lstat, unlink } from 'node:fs/promises';
+import { realpath, stat, writeFile, mkdir, readFile, lstat, unlink, rm } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { randomUUID, createHash } from 'node:crypto';
 import path from 'node:path';
@@ -559,25 +559,25 @@ exec "$REAL_BIN" "$@"
       const { expiresAt, timeLimitHours, allowedQuotaFloor, quotaLimitPercent } =
         profile.handoffConstraints;
       if (expiresAt && Date.now() >= Date.parse(expiresAt)) {
-        await this.scrubHandoffCredentials(
+        await this.purgeHandoffProfile(
           profile,
           'time-expired',
           `Handoff time limit (${timeLimitHours ?? 'N'}h) expired at ${new Date(expiresAt).toLocaleString()}`,
         );
         throw new Error(
-          `Account handoff expired: time limit (${timeLimitHours ?? 'N'}h) ended at ${new Date(expiresAt).toLocaleString()}`,
+          `Account handoff expired and was purged: time limit (${timeLimitHours ?? 'N'}h) ended at ${new Date(expiresAt).toLocaleString()}`,
         );
       }
       if (allowedQuotaFloor !== undefined) {
         const currentHeadroom = this.profileHeadroom(profile.id);
         if (currentHeadroom !== undefined && currentHeadroom <= allowedQuotaFloor) {
-          await this.scrubHandoffCredentials(
+          await this.purgeHandoffProfile(
             profile,
             'quota-exhausted',
             `Handoff quota budget (${quotaLimitPercent}%) exhausted (remaining: ${currentHeadroom.toFixed(1)}%, floor: ${allowedQuotaFloor.toFixed(1)}%)`,
           );
           throw new Error(
-            `Account handoff quota limit reached: owner allocated ${quotaLimitPercent}% of weekly quota (remaining: ${currentHeadroom.toFixed(1)}%, limit floor: ${allowedQuotaFloor.toFixed(1)}%)`,
+            `Account handoff quota limit reached and was purged: owner allocated ${quotaLimitPercent}% of weekly quota (remaining: ${currentHeadroom.toFixed(1)}%, limit floor: ${allowedQuotaFloor.toFixed(1)}%)`,
           );
         }
       }
@@ -792,14 +792,25 @@ exec "$REAL_BIN" "$@"
       });
     }
     if (targetProfileId) {
-      const prof = this.store.profile(targetProfileId);
+      let prof: Profile | null = null;
+      try {
+        prof = this.store.profile(targetProfileId);
+      } catch {}
       if (prof?.handoffConstraints) {
-        const { allowedQuotaFloor, quotaLimitPercent } = prof.handoffConstraints;
-        if (allowedQuotaFloor !== undefined) {
+        const { allowedQuotaFloor, quotaLimitPercent, expiresAt, timeLimitHours } =
+          prof.handoffConstraints;
+        if (expiresAt && Date.now() >= Date.parse(expiresAt)) {
+          void this.stop(invocation.id).catch(() => {});
+          await this.purgeHandoffProfile(
+            prof,
+            'time-expired',
+            `Handoff time limit (${timeLimitHours ?? 'N'}h) expired`,
+          ).catch(() => {});
+        } else if (allowedQuotaFloor !== undefined) {
           const currentHeadroom = this.profileHeadroom(prof.id);
           if (currentHeadroom !== undefined && currentHeadroom <= allowedQuotaFloor) {
             void this.stop(invocation.id).catch(() => {});
-            await this.scrubHandoffCredentials(
+            await this.purgeHandoffProfile(
               prof,
               'quota-exhausted',
               `Handoff quota budget (${quotaLimitPercent}%) exhausted (remaining: ${currentHeadroom.toFixed(1)}%, floor: ${allowedQuotaFloor.toFixed(1)}%)`,
@@ -1087,6 +1098,28 @@ exec "$REAL_BIN" "$@"
           }
           this.store.event('profile.observed', profile.id);
           this.failures.delete(profile.id);
+          if (updated.handoffConstraints) {
+            const { allowedQuotaFloor, quotaLimitPercent, expiresAt, timeLimitHours } =
+              updated.handoffConstraints;
+            if (expiresAt && Date.now() >= Date.parse(expiresAt)) {
+              await this.purgeHandoffProfile(
+                updated,
+                'time-expired',
+                `Handoff time limit (${timeLimitHours ?? 'N'}h) expired`,
+              );
+              return { profileId: profile.id, refreshed: true, purged: true };
+            } else if (allowedQuotaFloor !== undefined) {
+              const currentHeadroom = this.profileHeadroom(profile.id);
+              if (currentHeadroom !== undefined && currentHeadroom <= allowedQuotaFloor) {
+                await this.purgeHandoffProfile(
+                  updated,
+                  'quota-exhausted',
+                  `Handoff quota budget (${quotaLimitPercent}%) exhausted (remaining: ${currentHeadroom.toFixed(1)}%, floor: ${allowedQuotaFloor.toFixed(1)}%)`,
+                );
+                return { profileId: profile.id, refreshed: true, purged: true };
+              }
+            }
+          }
           return { profileId: profile.id, refreshed: true };
         }
         if (profile.tool === 'copilot') {
@@ -1173,6 +1206,28 @@ exec "$REAL_BIN" "$@"
         }
         this.store.event('profile.observed', profile.id);
         this.failures.delete(profile.id);
+        if (updated.handoffConstraints) {
+          const { allowedQuotaFloor, quotaLimitPercent, expiresAt, timeLimitHours } =
+            updated.handoffConstraints;
+          if (expiresAt && Date.now() >= Date.parse(expiresAt)) {
+            await this.purgeHandoffProfile(
+              updated,
+              'time-expired',
+              `Handoff time limit (${timeLimitHours ?? 'N'}h) expired`,
+            );
+            return { profileId: profile.id, refreshed: true, purged: true };
+          } else if (allowedQuotaFloor !== undefined) {
+            const currentHeadroom = this.profileHeadroom(profile.id);
+            if (currentHeadroom !== undefined && currentHeadroom <= allowedQuotaFloor) {
+              await this.purgeHandoffProfile(
+                updated,
+                'quota-exhausted',
+                `Handoff quota budget (${quotaLimitPercent}%) exhausted (remaining: ${currentHeadroom.toFixed(1)}%, floor: ${allowedQuotaFloor.toFixed(1)}%)`,
+              );
+              return { profileId: profile.id, refreshed: true, purged: true };
+            }
+          }
+        }
         return { profileId: profile.id, refreshed: true };
       } catch (error) {
         const count = (failure?.count ?? 0) + 1;
@@ -2047,44 +2102,57 @@ exec "$REAL_BIN" "$@"
       handoffMarkdown: handoff.handoffMarkdown,
     };
   }
+  async purgeHandoffProfile(
+    profile: Profile,
+    status: 'time-expired' | 'quota-exhausted',
+    reason: string,
+  ) {
+    // 1. Force stop and finish any active invocations for this profile
+    const running = this.store
+      .list<Invocation>('invocation')
+      .filter((i) => i.profileId === profile.id && i.lifecycle !== 'exited');
+    for (const inv of running) {
+      try {
+        if (inv.owned && inv.identity && inv.wrapper) {
+          await forceStopOwned(inv.identity, inv.wrapper);
+        }
+      } catch {}
+      this.store.finish(inv, 137);
+    }
+
+    // 2. Wipe profile disk directory and isolated sandboxes
+    const profileRoot = path.join(managementPaths.profiles, profile.id);
+    try {
+      await rm(profileRoot, { recursive: true, force: true });
+    } catch {}
+    if (profile.directory && profile.directory !== profileRoot) {
+      try {
+        await rm(profile.directory, { recursive: true, force: true });
+      } catch {}
+    }
+
+    // 3. Clear in-memory daemon state
+    this.probes.delete(profile.id);
+    this.inspections.delete(profile.id);
+    this.historyCopies.delete(profile.id);
+    this.failures.delete(profile.id);
+    this.previousQuota.delete(profile.id);
+
+    // 4. Wipe all records from database (profile, resources, auth observations, conversations, bindings, active-profiles)
+    const result = this.store.purgeProfile(profile.id);
+
+    console.log(
+      `[handoff] Profile ${profile.label} (${profile.id}) limit reached (${status}: ${reason}). Purged profile, credentials, sandboxes, and usage data everywhere.`,
+    );
+
+    return result;
+  }
   async scrubHandoffCredentials(
     profile: Profile,
     status: 'time-expired' | 'quota-exhausted',
     reason: string,
   ) {
-    try {
-      if (profile.tool === 'antigravity') {
-        const tokenFile = path.join(profile.directory, 'antigravity-oauth-token');
-        await writeFile(tokenFile, '{}\n', { mode: 0o600 });
-      } else if (profile.tool === 'codex') {
-        const authFile = path.join(profile.directory, 'auth.json');
-        await writeFile(authFile, '{}\n', { mode: 0o600 });
-      }
-    } catch {}
-
-    const updated = this.store.put<Profile>('profile', {
-      ...profile,
-      auth: 'unauthenticated',
-      handoffConstraints: profile.handoffConstraints
-        ? {
-            ...profile.handoffConstraints,
-            status,
-            reason,
-          }
-        : undefined,
-    });
-
-    this.store.put('auth-observation', {
-      id: randomUUID(),
-      profileId: profile.id,
-      observedAt: at(),
-      status: 'unauthenticated',
-      error: reason,
-      source: `handoff constraint enforcement (${status})`,
-    });
-
-    this.store.event('profile.auth-invalidated', profile.id);
-    return updated;
+    return await this.purgeHandoffProfile(profile, status, reason);
   }
   async exportAccountHandoff(raw: unknown) {
     const input = z
@@ -2325,13 +2393,16 @@ exec "$REAL_BIN" "$@"
               this.store.event('invocation.stale', invocation.id);
             }
             if (invocation.profileId) {
-              const prof = this.store.profile(invocation.profileId);
+              let prof: Profile | null = null;
+              try {
+                prof = this.store.profile(invocation.profileId);
+              } catch {}
               if (prof?.handoffConstraints) {
                 const { expiresAt, timeLimitHours, allowedQuotaFloor, quotaLimitPercent } =
                   prof.handoffConstraints;
                 if (expiresAt && Date.now() >= Date.parse(expiresAt)) {
                   void this.stop(invocation.id).catch(() => {});
-                  await this.scrubHandoffCredentials(
+                  await this.purgeHandoffProfile(
                     prof,
                     'time-expired',
                     `Handoff time limit (${timeLimitHours ?? 'N'}h) expired`,
@@ -2340,7 +2411,7 @@ exec "$REAL_BIN" "$@"
                   const currentHeadroom = this.profileHeadroom(prof.id);
                   if (currentHeadroom !== undefined && currentHeadroom <= allowedQuotaFloor) {
                     void this.stop(invocation.id).catch(() => {});
-                    await this.scrubHandoffCredentials(
+                    await this.purgeHandoffProfile(
                       prof,
                       'quota-exhausted',
                       `Handoff quota budget (${quotaLimitPercent}%) exhausted`,
@@ -2365,6 +2436,27 @@ exec "$REAL_BIN" "$@"
               connection: 'disconnected',
             });
             this.store.event('invocation.uncertain', invocation.id);
+          }
+        }
+      }
+      for (const prof of this.store.profiles()) {
+        if (!prof.handoffConstraints) continue;
+        const { expiresAt, timeLimitHours, allowedQuotaFloor, quotaLimitPercent } =
+          prof.handoffConstraints;
+        if (expiresAt && Date.now() >= Date.parse(expiresAt)) {
+          await this.purgeHandoffProfile(
+            prof,
+            'time-expired',
+            `Handoff time limit (${timeLimitHours ?? 'N'}h) expired`,
+          );
+        } else if (allowedQuotaFloor !== undefined) {
+          const currentHeadroom = this.profileHeadroom(prof.id);
+          if (currentHeadroom !== undefined && currentHeadroom <= allowedQuotaFloor) {
+            await this.purgeHandoffProfile(
+              prof,
+              'quota-exhausted',
+              `Handoff quota budget (${quotaLimitPercent}%) exhausted`,
+            );
           }
         }
       }
@@ -2476,6 +2568,11 @@ exec "$REAL_BIN" "$@"
       }
       case 'profiles.remove':
         return this.removeProfile(z.object({ profile: Identifier }).parse(raw).profile);
+      case 'profiles.purge': {
+        const id = z.object({ profile: Identifier }).parse(raw).profile;
+        const prof = this.store.profile(id);
+        return this.purgeHandoffProfile(prof, 'time-expired', 'Manual purge requested');
+      }
       case 'profiles.list':
         return this.store.profiles();
       case 'profiles.inspect':

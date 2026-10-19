@@ -205,6 +205,74 @@ export class ManagementStore {
       throw new Error(matches.length ? 'Ambiguous profile label; use its ID' : 'Unknown profile');
     return matches[0];
   }
+  purgeProfile(profileId: string) {
+    return this.db.transaction(() => {
+      this.prepare("DELETE FROM records WHERE kind='profile' AND id=?").run(profileId);
+      this.prepare(
+        "DELETE FROM records WHERE kind='resource' AND json_extract(data,'$.profileId')=?",
+      ).run(profileId);
+      this.prepare(
+        "DELETE FROM records WHERE kind='auth-observation' AND json_extract(data,'$.profileId')=?",
+      ).run(profileId);
+      this.prepare(
+        `DELETE FROM records WHERE kind='binding' AND json_extract(data,'$.conversationId') IN (
+          SELECT id FROM records WHERE kind='conversation' AND json_extract(data,'$.profileId')=?
+        )`,
+      ).run(profileId);
+      this.prepare(
+        "DELETE FROM records WHERE kind='conversation' AND json_extract(data,'$.profileId')=?",
+      ).run(profileId);
+      this.prepare(
+        "UPDATE records SET data = json_set(data, '$.profileId', NULL) WHERE kind='invocation' AND json_extract(data,'$.profileId')=?",
+      ).run(profileId);
+      this.prepare(
+        "UPDATE records SET data = json_set(data, '$.profileId', NULL) WHERE kind='entry' AND json_extract(data,'$.profileId')=?",
+      ).run(profileId);
+      this.prepare(
+        "UPDATE records SET data = json_set(data, '$.conversationId', NULL) WHERE kind='entry' AND json_extract(data,'$.conversationId') NOT IN (SELECT id FROM records WHERE kind='conversation')",
+      ).run();
+
+      const row = this.prepare('SELECT value FROM settings WHERE key=?').get('active-profiles') as
+        | { value: string }
+        | undefined;
+      if (row) {
+        try {
+          const active = JSON.parse(row.value) as Record<string, string>;
+          let changed = false;
+          for (const [tool, id] of Object.entries(active)) {
+            if (id === profileId) {
+              delete active[tool];
+              changed = true;
+            }
+          }
+          if (changed) {
+            this.prepare(
+              'INSERT INTO settings VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
+            ).run('active-profiles', JSON.stringify(active));
+          }
+        } catch {}
+      }
+
+      const uiRow = this.prepare('SELECT value FROM settings WHERE key=?').get('ui') as
+        | { value: string }
+        | undefined;
+      if (uiRow) {
+        try {
+          const ui = JSON.parse(uiRow.value);
+          if (ui.selected === profileId || ui.selected === `p:${profileId}`) {
+            ui.selected = null;
+            this.prepare(
+              'INSERT INTO settings VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
+            ).run('ui', JSON.stringify(ui));
+          }
+        } catch {}
+      }
+
+      this.event('profile.purged', profileId);
+      this.event('profile.removed', profileId);
+      return { purged: profileId };
+    })();
+  }
   project(directory: string, environmentId: string) {
     const id = createHash('sha256')
       .update(`${environmentId}:${directory}`)

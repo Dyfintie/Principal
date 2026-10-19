@@ -91,6 +91,23 @@ export function registerManagementCommands(
     await runNative(() => loginProfile(profile));
   });
   profiles
+    .command('remove <profile>')
+    .description('Remove a profile (soft removal preserves credentials; use --purge to wipe everything)')
+    .option('--purge', 'Completely wipe profile, credentials, and usage records everywhere')
+    .action(async (profile, options, command) => {
+      if (options.purge) {
+        print(command, await managementRpc('profiles.purge', { profile }));
+      } else {
+        print(command, await managementRpc('profiles.remove', { profile }));
+      }
+    });
+  profiles
+    .command('purge <profile>')
+    .description('Completely wipe profile, credentials, sandboxes, and usage records everywhere')
+    .action(async (profile, _options, command) => {
+      print(command, await managementRpc('profiles.purge', { profile }));
+    });
+  profiles
     .command('observer <profile>')
     .description('Print an opt-in native statusline setting; no files are modified')
     .option('--json')

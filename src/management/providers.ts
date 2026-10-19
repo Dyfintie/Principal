@@ -51,11 +51,6 @@ export async function findExecutable(name: string): Promise<string | null> {
   for (const directory of (process.env.PATH ?? '').split(path.delimiter)) {
     if (directory && path.isAbsolute(directory)) candidates.add(directory);
   }
-  candidates.add(path.join(homedir(), '.local', 'bin'));
-  candidates.add('/usr/local/bin');
-  candidates.add('/usr/bin');
-  candidates.add('/bin');
-  candidates.add('/opt/homebrew/bin');
 
   for (const directory of candidates) {
     const file = path.join(directory, name);
@@ -64,6 +59,24 @@ export async function findExecutable(name: string): Promise<string | null> {
       if ((await stat(file)).isFile()) return await realpath(file);
     } catch {}
   }
+
+  if (['agy', 'codex', 'claude', 'copilot'].includes(name)) {
+    const fallbacks = [
+      path.join(homedir(), '.local', 'bin'),
+      '/usr/local/bin',
+      '/usr/bin',
+      '/bin',
+      '/opt/homebrew/bin',
+    ];
+    for (const directory of fallbacks) {
+      const file = path.join(directory, name);
+      try {
+        await access(file, constants.X_OK);
+        if ((await stat(file)).isFile()) return await realpath(file);
+      } catch {}
+    }
+  }
+
   return null;
 }
 const capability = (supported: boolean, reason: string): Capability => ({

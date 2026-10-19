@@ -1,6 +1,6 @@
 {
   "name": "principal-cli",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Local management for native coding-agent profiles, sessions, and resources",
   "type": "module",
   "files": [
