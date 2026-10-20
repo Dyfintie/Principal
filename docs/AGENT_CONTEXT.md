@@ -42,6 +42,10 @@ The daemon starts when Principal is opened, owns the management socket/store, re
 - `src/management/launcher.ts`, `process.ts`, `tmux.ts`, `tmux-worker.ts`: native CLI launch and process lifecycle. Persistent terminal attachment applies to newly managed launches when available.
 - `src/management/history-copy.ts`, `antigravity-history.ts`: local conversation/history import mechanisms; provider-specific and not equivalent to a provider-supported cross-account import API.
 - `src/management/diagnostics.ts`, `commands.ts`, `slash.ts`, `tree.ts`: diagnostics, slash-command routing, and session-tree representation.
+- `src/management/swarm.ts`, `swarm-cli.ts`: parallel agent swarm orchestration, quota headroom dispatching, and task aggregation.
+- `src/management/worktree.ts`: ephemeral Git worktree isolation for parallel worker agents.
+- `src/mcp/server.ts`, `bin/principal-mcp.mjs`: Model Context Protocol (MCP) server for Lead Agent swarm delegation (`principal-mcp`).
+- `src/management/web-server.ts`, `src/management/web/dashboard.html`: browser-based management UI (`principal web`).
 - `scripts/workflow.mjs`: supported build/check/test workflow. Node.js >=24 is required; the workflow records and reuses the runtime.
 - `tests/`: automated unit and synthetic integration checks. Live smoke scripts may sign in, start provider sessions, or consume quota; inspect their behavior before running.
 
@@ -87,7 +91,16 @@ See [review decisions and implementation evidence](IMPROVEMENTS_IMPLEMENTED.md),
 - modularization of the formerly monolithic management dashboard;
 - SQLite expression indexes and bounded retention without a schema rewrite;
 - persistent tmux attach for newly launched managed sessions;
-- a limited host browser relay for approved Antigravity login hosts.
+- a limited host browser relay for approved Antigravity login hosts;
+- multi-account swarm delegation via Model Context Protocol (`principal-mcp`) and CLI (`principal swarm`).
+
+## Swarm Orchestration Protocol for AI Agents
+
+Lead Agents (such as Codex, Claude Code, Cursor, or Antigravity) can delegate parallel tasks across Principal's isolated worker accounts:
+1. **MCP Interface (`principal-mcp`)**: Exposes `principal_deploy_swarm`, `principal_get_swarm_status`, `principal_cancel_swarm`, and `principal_list_profiles`.
+2. **Headroom Balancing**: Automatically prioritizes profiles with the highest remaining weekly quota (`profileHeadroom`).
+3. **Workspace Isolation**: Ephemeral Git worktrees are created under `.git/principal-worktrees/swarm-<task-id>` so worker agents never collide on files or dirty the index. Unified git patches are returned upon completion.
+4. **Detailed Guide**: Consult [Agent Swarm Orchestrator Guide](AGENT_SWARM_ORCHESTRATOR_GUIDE.md) and [Swarm Architecture](AGENT_SWARM_ARCHITECTURE.md) for full protocol details.
 
 The cited tests are synthetic/local. Real Codex reauthentication, independent Antigravity accounts and token refresh, provider-specific persistent terminal behavior, and Antigravity cross-account history continuation still need user-controlled validation. The 60-second refresh interval only refreshes providers with supported local/native observations; exponential backoff can make a failed profile refresh less often. It cannot manufacture telemetry that a provider does not expose.
 

@@ -210,3 +210,56 @@ principal serve-mcp
 # or
 principal-mcp
 ```
+
+---
+
+## 6. Autonomous Lead Agent Protocol (How Main Agents Deploy Swarms)
+
+When an AI Agent (e.g. Codex, Claude Code, Cursor, or Antigravity) acts as the **Lead Orchestrator**, follow this exact protocol to delegate work:
+
+### Phase 1: Assess Available Accounts & Headroom
+Call `principal_list_profiles` to inspect available worker profiles and remaining weekly quotas:
+```json
+{}
+```
+Check which accounts are `auth === "authenticated"` and `busy === false`. This reveals how many parallel workers you can summon without queueing delay.
+
+### Phase 2: Task Decomposition Heuristics
+Deconstruct the user's objective into **orthogonal, non-overlapping subtasks**:
+- **High Independence**: Each task should touch a different file, subsystem, or test suite.
+- **Self-Contained Instructions**: Workers run in isolated non-interactive environments without conversational history. Provide exact file paths, expected signatures, and clear acceptance criteria.
+- **Enable Worktree Isolation**: Keep `"isolate_workspace": true` (default) so each worker receives its own private Git worktree branch (`principal/swarm-<task-id>-<token>`).
+
+### Phase 3: Summon the Swarm
+Invoke `principal_deploy_swarm`:
+```json
+{
+  "provider": "antigravity",
+  "tasks": [
+    {
+      "id": "task-test-auth",
+      "task": "Write unit tests for src/auth.ts in tests/auth.test.ts using node:test and node:assert/strict.",
+      "cwd": "/path/to/project",
+      "isolate_workspace": true
+    },
+    {
+      "id": "task-test-db",
+      "task": "Write unit tests for src/db.ts in tests/db.test.ts testing SQLite persistence and queries.",
+      "cwd": "/path/to/project",
+      "isolate_workspace": true
+    }
+  ],
+  "wait_for_completion": true,
+  "timeout_seconds": 300
+}
+```
+
+### Phase 4: Review Diffs & Synthesize Results
+When `wait_for_completion: true` finishes, the Lead Agent receives:
+- `summary`: Overall status and completion ratio.
+- `workers[].status`: Individual worker status (`completed`, `failed`, `timeout`).
+- `workers[].output`: Log of actions taken by the worker.
+- `workers[].gitDiff`: Exact unified diff of code modifications produced by the worker.
+- `workers[].modifiedFiles`: List of changed files.
+
+The Lead Agent can review each `gitDiff` for safety and correctness, verify the test results, and present a unified summary to the user.

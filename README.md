@@ -71,6 +71,50 @@ management after it exits. Principal itself accepts no task prompts. Historical
 orchestration code and records remain preserved, but project chat, task planning,
 model selection, delegation, and workspace apply are not exposed in this TUI.
 
+## 🐝 Multi-Account Swarm Orchestration (Agent Delegation)
+
+Principal includes a universal subagent delegation engine. Any **Lead Agent** (such as **OpenAI Codex**, **Claude Code**, **Cursor**, or **Antigravity**) can act as the central orchestrator, divide complex projects into parallel subtasks, and delegate them to a swarm of worker agents running across your isolated accounts (e.g. 4 parallel Antigravity accounts, multiple Codex accounts, or Copilot) with automatic quota headroom balancing and Git worktree isolation.
+
+### Connect an Agent as Lead Orchestrator (MCP)
+
+Principal provides a standards-compliant Model Context Protocol (MCP) server executable via `principal-mcp` (or `principal serve-mcp`).
+
+**For OpenAI Codex (`~/.codex/config.toml`):**
+```toml
+[mcp_servers.principal_swarm]
+command = "principal-mcp"
+```
+
+**For Claude Code:**
+```sh
+claude mcp add principal-swarm principal-mcp
+```
+
+### Available MCP Tools for Lead Agents:
+- **`principal_deploy_swarm`**: Dispatches parallel worker agents across Antigravity or Codex accounts with ephemeral Git worktree isolation (`git worktree add`) and quota headroom balancing.
+- **`principal_get_swarm_status`**: Queries live progress, worker logs, and unified git diffs for a running swarm.
+- **`principal_cancel_swarm`**: Terminates an active swarm execution safely.
+- **`principal_list_profiles`**: Checks available accounts, authentication states, and remaining weekly quota headroom.
+
+### CLI Swarm Commands
+```sh
+# View available worker accounts and headroom
+principal swarm profiles
+
+# Dispatch parallel tasks across accounts
+principal swarm run \
+  --provider antigravity \
+  --task "Audit src/cli.ts and report findings" \
+  --task "Write unit tests for authentication in tests/auth.test.ts"
+
+# Dispatch from JSON task file with structured output
+principal swarm run --provider antigravity --tasks tasks.json --json
+```
+
+For full architecture and prompt examples, see:
+- [Agent Swarm Orchestrator Guide](docs/AGENT_SWARM_ORCHESTRATOR_GUIDE.md)
+- [Swarm Architecture Breakdown](docs/AGENT_SWARM_ARCHITECTURE.md)
+
 ## Install & Setup
 
 ### ⚡ One-Liner Install (Antigravity & Claude Code Feel)
