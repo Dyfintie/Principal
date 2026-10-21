@@ -4,7 +4,7 @@ Updated: 2026-10-11. This is an onboarding note for agents reviewing or improvin
 
 ## What Principal is
 
-Principal is a Linux/WSL-first terminal management application for native coding-agent accounts, profiles, sessions, and usage observations. It presents a folder-like session explorer and provider-segmented `/profiles` and `/usage` views. Users continue using the providers’ official CLIs. Principal itself does not accept coding tasks, send prompts, or act as an agent executor.
+Principal is a Linux/WSL-first terminal management application for native coding-agent accounts, profiles, sessions, and usage observations. It presents a folder-like session explorer and provider-segmented `/profiles` and `/usage` views. Users continue using the providers’ official CLIs. The management TUI does not accept coding tasks. The separate MCP/CLI controlled-worker backend accepts explicit lead-agent assignments; see the current [0.2.0 handoff](CODEX_HANDOFF.md).
 
 The core product goal is to make existing native accounts and local agent sessions easier to find, organize, launch, resume, and inspect while preserving provider authentication boundaries. The providers expose different capabilities, so the UI must distinguish verified values from cached, stale, estimated, unsupported, or unknown data. Never imply that API billing equals a consumer subscription quota, that a running process proves an account identity, or that copied conversations remain synchronized.
 
@@ -42,8 +42,8 @@ The daemon starts when Principal is opened, owns the management socket/store, re
 - `src/management/launcher.ts`, `process.ts`, `tmux.ts`, `tmux-worker.ts`: native CLI launch and process lifecycle. Persistent terminal attachment applies to newly managed launches when available.
 - `src/management/history-copy.ts`, `antigravity-history.ts`: local conversation/history import mechanisms; provider-specific and not equivalent to a provider-supported cross-account import API.
 - `src/management/diagnostics.ts`, `commands.ts`, `slash.ts`, `tree.ts`: diagnostics, slash-command routing, and session-tree representation.
-- `src/management/swarm.ts`, `swarm-cli.ts`: parallel agent swarm orchestration, quota headroom dispatching, and task aggregation.
-- `src/management/worktree.ts`: ephemeral Git worktree isolation for parallel worker agents.
+- `src/management/workers.ts`, `worker-runner.ts`, `worker-provider.ts`: durable, explicitly assigned worker control and native execution.
+- `src/management/worker-workspace.ts`: retained pinned worktrees and alternate-index patch capture; older `worktree.ts` is a separate compatibility helper.
 - `src/mcp/server.ts`, `bin/principal-mcp.mjs`: Model Context Protocol (MCP) server for Lead Agent swarm delegation (`principal-mcp`).
 - `src/management/web-server.ts`, `src/management/web/dashboard.html`: browser-based management UI (`principal web`).
 - `scripts/workflow.mjs`: supported build/check/test workflow. Node.js >=24 is required; the workflow records and reuses the runtime.
@@ -94,13 +94,17 @@ See [review decisions and implementation evidence](IMPROVEMENTS_IMPLEMENTED.md),
 - a limited host browser relay for approved Antigravity login hosts;
 - multi-account swarm delegation via Model Context Protocol (`principal-mcp`) and CLI (`principal swarm`).
 
-## Swarm Orchestration Protocol for AI Agents
+## Controlled-worker protocol for lead agents (0.2.0)
 
-Lead Agents (such as Codex, Claude Code, Cursor, or Antigravity) can delegate parallel tasks across Principal's isolated worker accounts:
-1. **MCP Interface (`principal-mcp`)**: Exposes `principal_deploy_swarm`, `principal_get_swarm_status`, `principal_cancel_swarm`, and `principal_list_profiles`.
-2. **Headroom Balancing**: Automatically prioritizes profiles with the highest remaining weekly quota (`profileHeadroom`).
-3. **Workspace Isolation**: Ephemeral Git worktrees are created under `.git/principal-worktrees/swarm-<task-id>` so worker agents never collide on files or dirty the index. Unified git patches are returned upon completion.
-4. **Detailed Guide**: Consult [Agent Swarm Orchestrator Guide](AGENT_SWARM_ORCHESTRATOR_GUIDE.md) and [Swarm Architecture](AGENT_SWARM_ARCHITECTURE.md) for full protocol details.
+The lead selects exact profiles/models and owns instructions, follow-ups, retries, review, and integration. Principal supplies durable execution and reports observations without automatic account selection.
+
+- Inspect `principal_list_profiles`, then call `principal_start_worker` with `request_id`, `profile_id`, `cwd`, and `task`.
+- Inspect bounded events/artifacts through `principal_get_worker` and `principal_read_worker_artifact`; send follow-ups with `principal_send_worker_message`.
+- Codex supports live steering with the expected native turn ID. Antigravity and Copilot queue messages between turns; live steering is unsupported. Copilot uses SDK protocol 3 with the current native login and cannot isolate independent accounts.
+- Stop and resume individual workers explicitly. Retained worktrees are removed only by `principal_release_worker` after final capture.
+- Workers survive MCP disconnection and management restart. Exclusive profile leases prevent competing launches. Unknown process ownership retains the reservation.
+- Existing swarm tools are explicit batch wrappers: each task requires a different profile; automatic routing and blocking deployment are rejected.
+- Read the [lead guide](AGENT_SWARM_ORCHESTRATOR_GUIDE.md) and [architecture](AGENT_SWARM_ARCHITECTURE.md) for migration and operating limits.
 
 The cited tests are synthetic/local. Real Codex reauthentication, independent Antigravity accounts and token refresh, provider-specific persistent terminal behavior, and Antigravity cross-account history continuation still need user-controlled validation. The 60-second refresh interval only refreshes providers with supported local/native observations; exponential backoff can make a failed profile refresh less often. It cannot manufacture telemetry that a provider does not expose.
 

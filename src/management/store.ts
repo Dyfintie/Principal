@@ -26,7 +26,11 @@ type Kind =
   | 'resource'
   | 'account'
   | 'auth-observation'
-  | 'entitlement';
+  | 'entitlement'
+  | 'worker'
+  | 'worker-request'
+  | 'worker-lease'
+  | 'swarm';
 const stamp = () => new Date().toISOString();
 export class ManagementStore {
   readonly db: Database.Database;

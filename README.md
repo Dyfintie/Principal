@@ -67,53 +67,48 @@ layer remain unverified. Copilot/Antigravity use native account selection.
 ## Native tools and scope
 
 Launch and resume hand this terminal to the official coding agent and return to
-management after it exits. Principal itself accepts no task prompts. Historical
+management after it exits. The TUI accepts no task prompts. The separate MCP/CLI worker interface accepts explicit assignments. Historical
 orchestration code and records remain preserved, but project chat, task planning,
 model selection, delegation, and workspace apply are not exposed in this TUI.
 
-## 🐝 Multi-Account Swarm Orchestration (Agent Delegation)
+## Main-agent-controlled workers
 
-Principal includes a universal subagent delegation engine. Any **Lead Agent** (such as **OpenAI Codex**, **Claude Code**, **Cursor**, or **Antigravity**) can act as the central orchestrator, divide complex projects into parallel subtasks, and delegate them to a swarm of worker agents running across your isolated accounts (e.g. 4 parallel Antigravity accounts, multiple Codex accounts, or Copilot) with automatic quota headroom balancing and Git worktree isolation.
+Principal 0.2.0 gives the lead agent direct control of each Codex, Antigravity, or Copilot profile. The lead chooses the account, model, instructions, and recovery action. Principal runs and monitors those exact assignments, retains their Git worktrees, and reports quota observations and failures without choosing accounts or retrying tasks.
 
-### Connect an Agent as Lead Orchestrator (MCP)
+Connect the existing MCP executable:
 
-Principal provides a standards-compliant Model Context Protocol (MCP) server executable via `principal-mcp` (or `principal serve-mcp`).
-
-**For OpenAI Codex (`~/.codex/config.toml`):**
 ```toml
 [mcp_servers.principal_swarm]
 command = "principal-mcp"
 ```
 
-**For Claude Code:**
-```sh
-claude mcp add principal-swarm principal-mcp
-```
+Use `principal_list_profiles`, then `principal_start_worker` with a stable `request_id`, explicit `profile_id`, `cwd`, and `task`. Inspect `principal_get_worker`, send follow-ups, cancel or resume individual workers, read saved patches, and explicitly release stopped worktrees. Codex supports live steering; Antigravity and Copilot queue follow-ups between turns. Copilot uses its current native login; independent Copilot account isolation is unsupported. Missing capabilities and stale quota are reported explicitly.
 
-### Available MCP Tools for Lead Agents:
-- **`principal_deploy_swarm`**: Dispatches parallel worker agents across Antigravity or Codex accounts with ephemeral Git worktree isolation (`git worktree add`) and quota headroom balancing.
-- **`principal_get_swarm_status`**: Queries live progress, worker logs, and unified git diffs for a running swarm.
-- **`principal_cancel_swarm`**: Terminates an active swarm execution safely.
-- **`principal_list_profiles`**: Checks available accounts, authentication states, and remaining weekly quota headroom.
-
-### CLI Swarm Commands
 ```sh
-# View available worker accounts and headroom
 principal swarm profiles
-
-# Dispatch parallel tasks across accounts
-principal swarm run \
-  --provider antigravity \
-  --task "Audit src/cli.ts and report findings" \
-  --task "Write unit tests for authentication in tests/auth.test.ts"
-
-# Dispatch from JSON task file with structured output
-principal swarm run --provider antigravity --tasks tasks.json --json
+principal swarm start --json-file worker.json
+principal swarm get WORKER_ID
+principal swarm cancel-worker WORKER_ID --request-id stop-001
+principal swarm release WORKER_ID --request-id release-001
 ```
 
-For full architecture and prompt examples, see:
-- [Agent Swarm Orchestrator Guide](docs/AGENT_SWARM_ORCHESTRATOR_GUIDE.md)
-- [Swarm Architecture Breakdown](docs/AGENT_SWARM_ARCHITECTURE.md)
+`worker.json`:
+
+```json
+{
+  "request_id": "audit-001",
+  "profile_id": "PROFILE_ID_FROM_LIST",
+  "cwd": "/path/to/repository",
+  "task": "Audit the parser and report findings; leave changes for lead review.",
+  "timeout_seconds": 600
+}
+```
+
+The existing swarm tools remain explicit batch wrappers. **Migration:** every task now requires a different `profile_id` and `cwd`; `provider: "auto"`, blocking deployments, and implicit account queues are rejected. Results refer to durable artifacts. Worktrees start from the recorded Git HEAD; source working-tree changes are excluded and reported by `sourceDirty`. Worktrees and native processes are not security sandboxes; launch permissions follow the existing unattended execution policy.
+
+Workers survive MCP disconnection and management restart. A warm worker reserves its profile until stopped. Stopped worktrees remain available for inspection or same-profile native resume; release captures a final patch before removing the owned worktree. Execution completion is separate from correctness and integration.
+
+See the [lead-agent guide](docs/AGENT_SWARM_ORCHESTRATOR_GUIDE.md), [architecture](docs/AGENT_SWARM_ARCHITECTURE.md), and [development handoff](docs/CODEX_HANDOFF.md). After rebuilding/installing, restart the Principal management daemon and reload the MCP connection to discover the new tools; the MCP configuration key and executable remain the same.
 
 ## Install & Setup
 

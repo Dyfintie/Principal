@@ -38,6 +38,8 @@ const Request = z.object({
   params: z.unknown().optional(),
 });
 const server = createServer((socket) => {
+  const controller = new AbortController();
+  socket.on('close', () => controller.abort());
   let body = '';
   let handled = false;
   socket.setTimeout(120_000, () => socket.destroy());
@@ -55,7 +57,7 @@ const server = createServer((socket) => {
     handled = true;
     try {
       const request = Request.parse(JSON.parse(body.slice(0, end)));
-      const result = await service.rpc(request.method, request.params ?? {});
+      const result = await service.rpc(request.method, request.params ?? {}, controller.signal);
       socket.end(JSON.stringify({ protocolVersion: 1, result }) + '\n');
     } catch (error) {
       socket.end(

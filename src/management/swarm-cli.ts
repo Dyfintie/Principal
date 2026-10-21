@@ -1,167 +1,60 @@
 import { readFile } from 'node:fs/promises';
-import {
-  deploySwarm,
-  getSwarmStatus,
-  cancelSwarm,
-  listSwarmProfiles,
-  type SwarmTask,
-} from './swarm.js';
+import { managementRpc } from './client.js';
+import { sleep } from '../util.js';
+
+const help = `Principal controlled workers (0.2.0)
+
+  principal swarm profiles
+  principal swarm workers
+  principal swarm start --json-file worker.json
+  principal swarm get WORKER_ID [--cursor BYTES] [--wait SECONDS]
+  principal swarm message --json-file message.json
+  principal swarm cancel-worker WORKER_ID --request-id ID
+  principal swarm resume WORKER_ID --request-id ID
+  principal swarm artifact WORKER_ID ARTIFACT_ID [--offset BYTES]
+  principal swarm release WORKER_ID --request-id ID
+  principal swarm run --tasks batch.json --request-id ID [--wait]
+  principal swarm status SWARM_ID
+  principal swarm cancel SWARM_ID --request-id ID
+
+start JSON requires request_id, profile_id, cwd, task; model/effort/timeout_seconds are optional.
+message JSON requires request_id, worker_id, message; delivery defaults to auto.
+batch.json is an array of tasks with explicit profile_id and cwd. Automatic routing is removed.
+All execution mutations require a stable request ID. Output is JSON; artifact data is base64.
+--wait polls from the CLI; closing the CLI leaves workers running. Stop/release explicitly.
+`;
 
 export async function runSwarmCli(args: string[]): Promise<void> {
-  const subcommand = args[0] || 'help';
-
-  switch (subcommand) {
-    case 'profiles': {
-      const profiles = await listSwarmProfiles();
-      console.log('Available Swarm Profiles:');
-      console.log('------------------------------------------------------------');
-      for (const p of profiles) {
-        const headroomStr = p.headroom !== null ? `${p.headroom.toFixed(1)}%` : 'unknown';
-        const busyStr = p.busy ? '[BUSY]' : '[AVAILABLE]';
-        const isolatedStr = p.isolated ? '(isolated)' : '(host)';
-        console.log(
-          `• ${p.label.padEnd(14)} [${p.tool}] ${busyStr.padEnd(12)} Headroom: ${headroomStr.padEnd(8)} ${p.account ?? 'no account'} ${isolatedStr}`,
-        );
-      }
-      console.log('------------------------------------------------------------');
-      break;
-    }
-
+  const command = args[0] ?? 'help';
+  const flag = (name: string) => args.includes(name) ? args[args.indexOf(name) + 1] : undefined;
+  const required = (value: string | undefined, name: string) => { if (!value) throw new Error(`Missing ${name}; run principal swarm help`); return value; };
+  const requestId = () => required(flag('--request-id'), '--request-id');
+  const json = async () => JSON.parse(await readFile(required(flag('--json-file'), '--json-file'), 'utf8'));
+  let result: any;
+  switch (command) {
+    case 'profiles': result = await managementRpc('workers.profiles'); break;
+    case 'workers': result = await managementRpc('workers.list'); break;
+    case 'start': result = await managementRpc('workers.start', await json()); break;
+    case 'message': result = await managementRpc('workers.message', await json()); break;
+    case 'get': result = await managementRpc('workers.get', { worker_id: required(args[1], 'WORKER_ID'), cursor: Number(flag('--cursor') ?? 0), wait_seconds: Number(flag('--wait') ?? 0) }); break;
+    case 'cancel-worker':
+    case 'resume':
+    case 'release': result = await managementRpc(`workers.${command === 'cancel-worker' ? 'cancel' : command}`, { worker_id: required(args[1], 'WORKER_ID'), request_id: requestId() }); break;
+    case 'artifact': result = await managementRpc('workers.artifact', { worker_id: required(args[1], 'WORKER_ID'), artifact_id: required(args[2], 'ARTIFACT_ID'), offset: Number(flag('--offset') ?? 0) }); break;
     case 'run': {
-      let provider: 'antigravity' | 'codex' | 'auto' = 'antigravity';
-      let timeoutSeconds = 300;
-      let isolateWorkspace = true;
-      let jsonOutput = false;
-      let tasksJsonFile: string | undefined;
-      const tasks: SwarmTask[] = [];
-
-      for (let i = 1; i < args.length; i++) {
-        const arg = args[i];
-        if (arg === '--provider' && args[i + 1]) {
-          provider = args[++i] as any;
-        } else if (arg === '--task' && args[i + 1]) {
-          const taskStr = args[++i];
-          tasks.push({
-            id: `task-${tasks.length + 1}`,
-            task: taskStr,
-            isolate_workspace: isolateWorkspace,
-          });
-        } else if (arg === '--tasks' && args[i + 1]) {
-          tasksJsonFile = args[++i];
-        } else if (arg === '--timeout' && args[i + 1]) {
-          timeoutSeconds = parseInt(args[++i], 10);
-        } else if (arg === '--no-worktree') {
-          isolateWorkspace = false;
-        } else if (arg === '--json') {
-          jsonOutput = true;
-        }
-      }
-
-      if (tasksJsonFile) {
-        const content = await readFile(tasksJsonFile, 'utf8');
-        const parsed = JSON.parse(content);
-        if (Array.isArray(parsed)) {
-          for (let idx = 0; idx < parsed.length; idx++) {
-            const item = parsed[idx];
-            tasks.push({
-              id: item.id ?? `task-${idx + 1}`,
-              task: item.task ?? item.prompt,
-              cwd: item.cwd,
-              isolate_workspace: item.isolate_workspace ?? isolateWorkspace,
-              model: item.model,
-            });
-          }
-        }
-      }
-
-      if (!tasks.length) {
-        console.error('Error: No tasks provided. Use --task "<prompt>" or --tasks <file.json>');
-        process.exitCode = 1;
-        return;
-      }
-
-      if (!jsonOutput) {
-        console.log(
-          `🚀 Deploying Principal Swarm (${provider}): ${tasks.length} tasks in parallel...`,
-        );
-      }
-
-      const result = await deploySwarm({
-        provider,
-        tasks,
-        wait_for_completion: true,
-        timeout_seconds: timeoutSeconds,
-      });
-
-      if (jsonOutput) {
-        console.log(JSON.stringify(result, null, 2));
-      } else {
-        console.log(`\n${result.summary}\n`);
-        for (const worker of result.workers) {
-          const statusIcon = worker.status === 'completed' ? '✔' : '✖';
-          console.log(
-            `${statusIcon} Task ${worker.id} (${worker.profileLabel} · ${worker.account ?? 'no account'}) [${worker.durationMs}ms] -> ${worker.status}`,
-          );
-          if (worker.gitDiff && worker.gitDiff.trim().length > 0) {
-            console.log(`   Changes produced (${worker.modifiedFiles?.length ?? 0} files):`);
-            const snippet = worker.gitDiff.split('\n').slice(0, 5).join('\n');
-            console.log(`   ${snippet}\n   ...`);
-          }
-          if (worker.status !== 'completed' && worker.error) {
-            console.log(`   Error: ${worker.error}`);
-          }
+      const tasks = JSON.parse(await readFile(required(flag('--tasks'), '--tasks'), 'utf8'));
+      result = await managementRpc('workers.swarm.deploy', { request_id: requestId(), tasks, ...(flag('--timeout') ? { timeout_seconds: Number(flag('--timeout')) } : {}) });
+      if (args.includes('--wait')) {
+        while (result.status === 'running') {
+          await sleep(1000); result = await managementRpc('workers.swarm.status', { swarm_id: result.swarmId });
         }
       }
       break;
     }
-
-    case 'status': {
-      const swarmId = args[1];
-      if (!swarmId) {
-        console.error('Usage: principal swarm status <swarm-id>');
-        process.exitCode = 1;
-        return;
-      }
-      const status = getSwarmStatus(swarmId);
-      if (!status) {
-        console.error(`Swarm '${swarmId}' not found or already completed.`);
-        process.exitCode = 1;
-        return;
-      }
-      console.log(JSON.stringify(status, null, 2));
-      break;
-    }
-
-    case 'cancel': {
-      const swarmId = args[1];
-      if (!swarmId) {
-        console.error('Usage: principal swarm cancel <swarm-id>');
-        process.exitCode = 1;
-        return;
-      }
-      const cancelled = await cancelSwarm(swarmId);
-      console.log(cancelled ? `Swarm '${swarmId}' cancelled.` : `Swarm '${swarmId}' not found.`);
-      break;
-    }
-
-    default:
-      console.log(`Principal Swarm Orchestrator
-
-Usage:
-  principal swarm profiles                     List available profiles and quota headroom
-  principal swarm run [options]                Deploy parallel worker agents
-  principal swarm status <swarm-id>            Check status of a swarm
-  principal swarm cancel <swarm-id>            Cancel a running swarm
-  principal serve-mcp                          Start the Model Context Protocol stdio server
-
-Options for 'principal swarm run':
-  --provider <antigravity|codex|auto>          Target provider (default: antigravity)
-  --task "<instruction>"                       Task instruction (repeatable for multiple tasks)
-  --tasks <file.json>                          Path to JSON file containing array of tasks
-  --timeout <seconds>                          Timeout per task (default: 300)
-  --no-worktree                                Disable Git worktree isolation
-  --json                                       Output complete result as JSON
-`);
-      break;
+    case 'status': result = await managementRpc('workers.swarm.status', { swarm_id: required(args[1], 'SWARM_ID') }); break;
+    case 'cancel': result = await managementRpc('workers.swarm.cancel', { swarm_id: required(args[1], 'SWARM_ID'), request_id: requestId() }); break;
+    case 'help': console.log(help); return;
+    default: throw new Error(`Unknown swarm command: ${command}\n${help}`);
   }
+  console.log(JSON.stringify(result, null, 2));
 }

@@ -11,7 +11,9 @@ export async function sendManagement(
   params: unknown = {},
   timeout = 35_000,
   socketPath = managementPaths.socket,
+  signal?: AbortSignal,
 ): Promise<any> {
+  if (signal?.aborted) throw new Error('Management request cancelled');
   if (!path.isAbsolute(socketPath)) throw new Error('Management socket must be absolute');
   const metadata = await lstat(socketPath);
   if (!metadata.isSocket() || metadata.uid !== process.getuid?.() || metadata.mode & 0o077)
@@ -23,9 +25,13 @@ export async function sendManagement(
     const finish = (error?: Error, value?: unknown) => {
       if (settled) return;
       settled = true;
+      signal?.removeEventListener('abort', cancel);
       socket.destroy();
       error ? reject(error) : resolve(value);
     };
+    const cancel = () => finish(new Error('Management request cancelled'));
+    signal?.addEventListener('abort', cancel, { once: true });
+    if (signal?.aborted) { cancel(); return; }
     socket.setTimeout(timeout, () => finish(new Error('Management request timed out')));
     socket.on('error', (error) => finish(error));
     socket.on('connect', () =>
@@ -90,15 +96,18 @@ async function startManager() {
     `Management daemon could not start; inspect ${managementPaths.state}/manager.log`,
   );
 }
-export async function managementRpc(method: string, params: unknown = {}, timeout = 35_000) {
+export async function managementRpc(method: string, params: unknown = {}, timeout = 35_000, signal?: AbortSignal) {
   ready ??= startManager().catch((error) => {
     ready = null;
     throw error;
   });
   await ready;
   try {
-    return await sendManagement(method, params, timeout);
+    return await sendManagement(method, params, timeout, managementPaths.socket, signal);
   } catch (error) {
+    if (method.startsWith('workers.') && (error as Error).message === 'Unsupported management operation') {
+      throw new Error('The running management daemon predates controlled workers. Restart the Principal management daemon after upgrading, then reconnect MCP; do not stop unrelated native agents.');
+    }
     if (['ENOENT', 'ECONNREFUSED'].includes((error as NodeJS.ErrnoException).code ?? '')) {
       ready = null;
       // Retry reads only. Never replay a potentially completed mutation.
@@ -110,7 +119,7 @@ export async function managementRpc(method: string, params: unknown = {}, timeou
           throw e;
         });
         await ready;
-        return sendManagement(method, params, timeout);
+        return sendManagement(method, params, timeout, managementPaths.socket, signal);
       }
     }
     throw error;

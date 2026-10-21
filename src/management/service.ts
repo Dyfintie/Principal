@@ -16,6 +16,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import path from 'node:path';
 import { z } from 'zod';
 import { ManagementStore } from './store.js';
+import { WorkerManager } from './workers.js';
 import {
   Callback,
   Identifier,
@@ -82,6 +83,7 @@ const profileInput = z.object({
   handoff: z.boolean().default(false),
 });
 export class ManagementService {
+  readonly workers: WorkerManager;
   installations: Installation[] = [];
   private readonly probes = new Map<string, Promise<unknown>>();
   private readonly inspections = new Map<string, Promise<{ profile: Profile; reason?: string }>>();
@@ -98,7 +100,9 @@ export class ManagementService {
   constructor(
     readonly store: ManagementStore,
     readonly environment: Snapshot['environment'],
-  ) {}
+  ) {
+    this.workers = new WorkerManager(store, () => this.installations);
+  }
   async initialize() {
     this.installations = await detectInstallations();
     try {
@@ -237,6 +241,7 @@ export class ManagementService {
     return updated;
   }
   removeProfile(reference: string) {
+    this.workers.assertProfileFree(this.store.profile(reference).id);
     const profile = this.store.profile(reference);
     if (this.historyCopies.has(profile.id))
       throw new Error('Finish the conversation copy before removing this profile.');
@@ -535,6 +540,7 @@ exec "$REAL_BIN" "$@"
     };
   }
   async prepare(raw: unknown) {
+    await this.workers.reconcile();
     const input = z
       .object({
         profile: Identifier,
@@ -555,6 +561,7 @@ exec "$REAL_BIN" "$@"
       })
       .parse(raw);
     const profile = this.store.profile(input.profile);
+    this.workers.assertProfileFree(profile.id);
     if (!this.installation(profile.tool).executable) throw new Error(`Install ${profile.tool}`);
     if (profile.handoffConstraints) {
       const { expiresAt, timeLimitHours, allowedQuotaFloor, quotaLimitPercent } =
@@ -592,6 +599,7 @@ exec "$REAL_BIN" "$@"
     const folder = this.store.folder(input.folder);
     const project = this.store.project(directory, this.environment.id);
     return this.store.db.transaction(() => {
+      this.workers.assertProfileFree(profile.id);
       if (
         profile.tool === 'antigravity' &&
         profile.isolated &&
@@ -2108,6 +2116,7 @@ exec "$REAL_BIN" "$@"
     status: 'time-expired' | 'quota-exhausted',
     reason: string,
   ) {
+    this.workers.assertProfileFree(profile.id);
     // 1. Force stop and finish any active invocations for this profile
     const running = this.store
       .list<Invocation>('invocation')
@@ -2444,6 +2453,7 @@ exec "$REAL_BIN" "$@"
     if (this.ticking) return;
     this.ticking = true;
     try {
+      await this.workers.reconcile();
       for (const invocation of this.store
         .list<Invocation>('invocation')
         .filter((i) => i.lifecycle !== 'exited')) {
@@ -2576,7 +2586,8 @@ exec "$REAL_BIN" "$@"
       this.ticking = false;
     }
   }
-  async rpc(method: string, raw: unknown = {}) {
+  async rpc(method: string, raw: unknown = {}, signal?: AbortSignal) {
+    if (method.startsWith('workers.')) return this.workers.rpc(method, raw, signal);
     switch (method) {
       case 'snapshot':
         return this.snapshot();
